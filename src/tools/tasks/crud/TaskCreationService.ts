@@ -42,7 +42,9 @@ interface CreationState {
 /**
  * Creates a new task with comprehensive error handling and rollback support
  */
-export async function createTask(args: CreateTaskArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function createTask(
+  args: CreateTaskArgs,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     // Validate required fields
     if (!args.projectId) {
@@ -57,16 +59,35 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
     // Sanitize and validate user inputs for comprehensive security
     const sanitizedTitle = sanitizeString(args.title);
     // Preserve empty strings as they are valid descriptions
-    const sanitizedDescription = args.description !== undefined ? sanitizeString(args.description) : undefined;
+    const sanitizedDescription =
+      args.description !== undefined ? sanitizeString(args.description) : undefined;
 
     // Validate optional date fields
     if (args.dueDate) {
       validateDateString(args.dueDate, 'dueDate');
     }
 
-    // Validate assignee IDs upfront
+    // Validate assignee IDs upfront with enhanced validation
     if (args.assignees && args.assignees.length > 0) {
-      args.assignees.forEach((id) => validateId(id, 'assignee ID'));
+      logger.debug('Assignee IDs received', { assignees: args.assignees });
+
+      // Enhanced validation: ensure all assignees are valid positive integers
+      for (let i = 0; i < args.assignees.length; i++) {
+        const assigneeId = args.assignees[i];
+
+        // Check if it's a number
+        if (typeof assigneeId !== 'number' || !Number.isInteger(assigneeId) || assigneeId <= 0) {
+          logger.error('Invalid assignee ID', {
+            index: i,
+            value: assigneeId,
+            type: typeof assigneeId,
+          });
+          throw new MCPError(
+            ErrorCode.VALIDATION_ERROR,
+            `Invalid assignee at position ${i}: must be a positive integer ID, got ${typeof assigneeId === 'number' ? assigneeId : typeof assigneeId} "${assigneeId}". Assignees must be numeric user IDs, not usernames.`,
+          );
+        }
+      }
     }
 
     const client = await getClientFromContext();
@@ -99,7 +120,7 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
     const creationState: CreationState = {
       createdTask,
       labelsAdded: false,
-      assigneesAdded: false
+      assigneesAdded: false,
     };
 
     try {
@@ -114,7 +135,6 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
         await addAssigneesToTask(client, createdTask.id, args.assignees);
         creationState.assigneesAdded = true;
       }
-
     } catch (updateError) {
       // Attempt to clean up the partially created task
       await rollbackTaskCreation(client, creationState, updateError);
@@ -138,7 +158,7 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
       undefined, // useOptimizedFormat (ignored - using standard AORP)
       undefined, // useAorp (ignored - always using AORP)
       undefined, // aorpConfig (using auto-generated)
-      args.sessionId
+      args.sessionId,
     );
 
     logger.debug('Tasks tool response', {
@@ -161,11 +181,12 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
     }
 
     // Handle fetch/connection errors with helpful guidance
-    if (error instanceof Error && (
-      error.message.includes('fetch failed') ||
-      error.message.includes('ECONNREFUSED') ||
-      error.message.includes('ENOTFOUND')
-    )) {
+    if (
+      error instanceof Error &&
+      (error.message.includes('fetch failed') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ENOTFOUND'))
+    ) {
       throw handleFetchError(error, 'create task');
     }
 
@@ -177,16 +198,21 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
 /**
  * Adds labels to a task with retry logic for authentication errors
  */
-async function addLabelsToTask(client: VikunjaClient, taskId: number, labelIds: number[]): Promise<void> {
+async function addLabelsToTask(
+  client: VikunjaClient,
+  taskId: number,
+  labelIds: number[],
+): Promise<void> {
   try {
     await withRetry(
-      () => client.tasks.updateTaskLabels(taskId, {
-        label_ids: labelIds,
-      }),
+      () =>
+        client.tasks.updateTaskLabels(taskId, {
+          label_ids: labelIds,
+        }),
       {
         ...RETRY_CONFIG.AUTH_ERRORS,
-        shouldRetry: (error) => isAuthenticationError(error)
-      }
+        shouldRetry: (error) => isAuthenticationError(error),
+      },
     );
   } catch (labelError) {
     // Check if it's an auth error after retries
@@ -203,16 +229,28 @@ async function addLabelsToTask(client: VikunjaClient, taskId: number, labelIds: 
 /**
  * Adds assignees to a task with retry logic for authentication errors
  */
-async function addAssigneesToTask(client: VikunjaClient, taskId: number, assigneeIds: number[]): Promise<void> {
+async function addAssigneesToTask(
+  client: VikunjaClient,
+  taskId: number,
+  assigneeIds: number[],
+): Promise<void> {
   try {
+    // Debug log what we're sending to the API
+    logger.debug('Calling bulkAssignUsersToTask', {
+      taskId,
+      user_ids: assigneeIds,
+      user_ids_type: assigneeIds.map((id) => typeof id),
+    });
+
     await withRetry(
-      () => client.tasks.bulkAssignUsersToTask(taskId, {
-        user_ids: assigneeIds,
-      }),
+      () =>
+        client.tasks.bulkAssignUsersToTask(taskId, {
+          user_ids: assigneeIds,
+        }),
       {
         ...RETRY_CONFIG.AUTH_ERRORS,
-        shouldRetry: (error) => isAuthenticationError(error)
-      }
+        shouldRetry: (error) => isAuthenticationError(error),
+      },
     );
   } catch (assigneeError) {
     // Check if it's an auth error after retries
@@ -232,7 +270,7 @@ async function addAssigneesToTask(client: VikunjaClient, taskId: number, assigne
 async function rollbackTaskCreation(
   client: VikunjaClient,
   creationState: CreationState,
-  originalError: unknown
+  originalError: unknown,
 ): Promise<never> {
   // Attempt to clean up the partially created task
   let rollbackSucceeded = false;
