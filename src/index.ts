@@ -13,9 +13,49 @@ import { AuthManager } from './auth/AuthManager';
 import { registerTools } from './tools';
 import { logger } from './utils/logger';
 import { createSecureConnectionMessage, createSecureLogConfig } from './utils/security';
-import { createVikunjaClientFactory, setGlobalClientFactory, type VikunjaClientFactory } from './client';
+import {
+  createVikunjaClientFactory,
+  setGlobalClientFactory,
+  type VikunjaClientFactory,
+} from './client';
 
 dotenv.config({ quiet: true });
+
+// Auto-login: if VIKUNJA_USER and VIKUNJA_PASSWORD are provided, obtain JWT automatically
+async function autoLoginWithCredentials(): Promise<void> {
+  const vikunjaUrl = process.env.VIKUNJA_URL;
+  if (
+    process.env.VIKUNJA_USER &&
+    process.env.VIKUNJA_PASSWORD &&
+    !process.env.VIKUNJA_API_TOKEN &&
+    vikunjaUrl
+  ) {
+    const loginUrl = vikunjaUrl.replace('/api/v1', '') + '/api/v1/login';
+    logger.info('Attempting auto-login with credentials for user:', process.env.VIKUNJA_USER);
+
+    try {
+      const response = await fetch(loginUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: process.env.VIKUNJA_USER,
+          password: process.env.VIKUNJA_PASSWORD,
+        }),
+      });
+
+      const data = (await response.json()) as { token?: string; message?: string };
+
+      if (data.token) {
+        process.env.VIKUNJA_API_TOKEN = data.token;
+        logger.info('Successfully logged in as', process.env.VIKUNJA_USER);
+      } else {
+        logger.warn('Auto-login failed:', data.message || 'No token received');
+      }
+    } catch (error) {
+      logger.error('Auto-login error:', error instanceof Error ? error.message : String(error));
+    }
+  }
+}
 
 const server = new McpServer({
   name: 'vikunja-mcp',
@@ -59,16 +99,20 @@ export const factoryInitializationPromise = initializeFactory()
     registerTools(server, authManager, undefined);
   });
 
-if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
-  const connectionMessage = createSecureConnectionMessage(
-    process.env.VIKUNJA_URL, 
-    process.env.VIKUNJA_API_TOKEN
-  );
-  logger.info(`Auto-authenticating: ${connectionMessage}`);
-  authManager.connect(process.env.VIKUNJA_URL, process.env.VIKUNJA_API_TOKEN);
-  const detectedAuthType = authManager.getAuthType();
-  logger.info(`Using detected auth type: ${detectedAuthType}`);
-}
+// Run auto-login first if credentials are provided, then auto-authenticate
+void autoLoginWithCredentials().then(() => {
+  // Continue with auto-authentication after login attempt
+  if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
+    const connectionMessage = createSecureConnectionMessage(
+      process.env.VIKUNJA_URL,
+      process.env.VIKUNJA_API_TOKEN,
+    );
+    logger.info(`Auto-authenticating: ${connectionMessage}`);
+    authManager.connect(process.env.VIKUNJA_URL, process.env.VIKUNJA_API_TOKEN);
+    const detectedAuthType = authManager.getAuthType();
+    logger.info(`Using detected auth type: ${detectedAuthType}`);
+  }
+});
 
 async function main(): Promise<void> {
   await factoryInitializationPromise;
@@ -77,7 +121,7 @@ async function main(): Promise<void> {
   await server.connect(transport);
 
   logger.info('Vikunja MCP server started');
-  
+
   const config = createSecureLogConfig({
     mode: process.env.MCP_MODE,
     debug: process.env.DEBUG,
@@ -85,7 +129,7 @@ async function main(): Promise<void> {
     url: process.env.VIKUNJA_URL,
     token: process.env.VIKUNJA_API_TOKEN,
   });
-  
+
   logger.debug('Configuration loaded', config);
 }
 
@@ -113,7 +157,10 @@ export { withRetry, RETRY_CONFIG } from './utils/retry';
 export { transformApiError, handleFetchError, handleStatusCodeError } from './utils/error-handler';
 export { parseFilterString } from './utils/filters';
 export { validateTaskCountLimit } from './utils/memory';
-export { createStandardResponse, createAorpErrorResponse as createErrorResponse } from './utils/response-factory';
+export {
+  createStandardResponse,
+  createAorpErrorResponse as createErrorResponse,
+} from './utils/response-factory';
 
 // Additional exports for task modules
 export type { SimpleResponse } from './utils/simple-response';
