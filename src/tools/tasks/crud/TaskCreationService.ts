@@ -228,6 +228,7 @@ async function addLabelsToTask(
 
 /**
  * Adds assignees to a task with retry logic for authentication errors
+ * Uses single assign endpoint as bulk assign (POST /bulk) doesn't work in Vikunja
  */
 async function addAssigneesToTask(
   client: VikunjaClient,
@@ -236,22 +237,18 @@ async function addAssigneesToTask(
 ): Promise<void> {
   try {
     // Debug log what we're sending to the API
-    logger.debug('Calling bulkAssignUsersToTask', {
+    logger.debug('Calling assignUserToTask for each user', {
       taskId,
       user_ids: assigneeIds,
-      user_ids_type: assigneeIds.map((id) => typeof id),
     });
 
-    await withRetry(
-      () =>
-        client.tasks.bulkAssignUsersToTask(taskId, {
-          user_ids: assigneeIds,
-        }),
-      {
+    // Assign each user individually (bulk endpoint doesn't work in Vikunja)
+    for (const userId of assigneeIds) {
+      await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
         ...RETRY_CONFIG.AUTH_ERRORS,
         shouldRetry: (error) => isAuthenticationError(error),
-      },
-    );
+      });
+    }
   } catch (assigneeError) {
     // Check if it's an auth error after retries
     if (isAuthenticationError(assigneeError)) {

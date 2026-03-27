@@ -89,7 +89,7 @@ export class TaskCreationService {
     projectId: number,
     client: TypedVikunjaClient,
     entityMaps: EntityResolutionResult,
-    catchErrors: boolean = true
+    catchErrors: boolean = true,
   ): Promise<TaskCreationResult> {
     const warnings: string[] = [];
 
@@ -102,7 +102,7 @@ export class TaskCreationService {
         client,
         createdTask,
         task,
-        entityMaps.labelMap
+        entityMaps.labelMap,
       );
       warnings.push(...labelWarnings);
 
@@ -111,12 +111,17 @@ export class TaskCreationService {
         createdTask,
         task,
         entityMaps.userMap,
-        entityMaps.projectUsers
+        entityMaps.projectUsers,
       );
       warnings.push(...assigneeWarnings);
 
       if (task.reminders && task.reminders.length > 0) {
-        warnings.push(this.handleReminders(createdTask.id, task.reminders as Array<{ reminder_date?: string; reminder?: string }>));
+        warnings.push(
+          this.handleReminders(
+            createdTask.id,
+            task.reminders as Array<{ reminder_date?: string; reminder?: string }>,
+          ),
+        );
       }
 
       const result: TaskCreationResult = {
@@ -203,7 +208,7 @@ export class TaskCreationService {
   private async createBaseTask(
     client: TypedVikunjaClient,
     taskData: TaskCreationData,
-    taskTitle: string
+    taskTitle: string,
   ): Promise<Task> {
     try {
       // Safely convert TaskCreationData to Task interface expected by node-vikunja
@@ -234,7 +239,7 @@ export class TaskCreationService {
     client: TypedVikunjaClient,
     createdTask: Task,
     task: ImportedTask,
-    labelMap: Map<string, number>
+    labelMap: Map<string, number>,
   ): Promise<string[]> {
     const warnings: string[] = [];
 
@@ -272,7 +277,11 @@ export class TaskCreationService {
         });
 
         // Verify the labels were actually assigned (API tokens may silently fail)
-        const labelsActuallyAssigned = await this.verifyLabelAssignment(client, createdTask.id, labelIds);
+        const labelsActuallyAssigned = await this.verifyLabelAssignment(
+          client,
+          createdTask.id,
+          labelIds,
+        );
 
         if (!labelsActuallyAssigned) {
           // Label assignment silently failed (common with API tokens)
@@ -282,7 +291,9 @@ export class TaskCreationService {
             labelNames: task.labels,
             updateResult,
           });
-          warnings.push(`Labels specified but not assigned (API token limitation). Consider using JWT authentication for label support.`);
+          warnings.push(
+            `Labels specified but not assigned (API token limitation). Consider using JWT authentication for label support.`,
+          );
         } else {
           logger.debug('Labels assigned and verified successfully', {
             taskId: createdTask.id,
@@ -291,7 +302,11 @@ export class TaskCreationService {
           });
         }
       } catch (labelError) {
-        const warning = this.handleLabelAssignmentError(labelError as Error | { code?: string; message?: string }, createdTask.id, task.labels);
+        const warning = this.handleLabelAssignmentError(
+          labelError as Error | { code?: string; message?: string },
+          createdTask.id,
+          task.labels,
+        );
         warnings.push(warning);
       }
     }
@@ -310,7 +325,7 @@ export class TaskCreationService {
   private async verifyLabelAssignment(
     client: TypedVikunjaClient,
     taskId: number,
-    expectedLabelIds: number[]
+    expectedLabelIds: number[],
   ): Promise<boolean> {
     try {
       const updatedTask = await client.tasks.getTask(taskId);
@@ -337,20 +352,30 @@ export class TaskCreationService {
    * @param labelNames - The label names that were being assigned
    * @returns Warning message
    */
-  private handleLabelAssignmentError(labelError: Error | { code?: string; message?: string }, taskId: number | undefined, labelNames: string[]): string {
+  private handleLabelAssignmentError(
+    labelError: Error | { code?: string; message?: string },
+    taskId: number | undefined,
+    labelNames: string[],
+  ): string {
     // Check if this is an authentication error
     if (isAuthenticationError(labelError)) {
       logger.warn('Label assignment failed due to authentication issue', {
         taskId,
         labelNames,
-        error: labelError instanceof Error ? labelError.message : (labelError?.message ?? 'Unknown error'),
+        error:
+          labelError instanceof Error
+            ? labelError.message
+            : (labelError?.message ?? 'Unknown error'),
       });
       return `Label assignment requires JWT authentication. Labels were not assigned.`;
     } else {
       logger.error('Failed to assign labels to task', {
         taskId,
         labelNames,
-        error: labelError instanceof Error ? labelError.message : (labelError?.message ?? 'Unknown error'),
+        error:
+          labelError instanceof Error
+            ? labelError.message
+            : (labelError?.message ?? 'Unknown error'),
       });
       return `Failed to assign labels: ${labelError instanceof Error ? labelError.message : 'Unknown error'}`;
     }
@@ -371,7 +396,7 @@ export class TaskCreationService {
     createdTask: Task,
     task: ImportedTask,
     userMap: Map<string, number>,
-    projectUsers: User[]
+    projectUsers: User[],
   ): Promise<string[]> {
     const warnings: string[] = [];
 
@@ -385,14 +410,14 @@ export class TaskCreationService {
         taskId: createdTask.id || 'unknown',
         assignees: task.assignees,
       });
-      warnings.push('Assignees skipped due to user fetch failure (possible API authentication issue)');
+      warnings.push(
+        'Assignees skipped due to user fetch failure (possible API authentication issue)',
+      );
       return warnings;
     }
 
     // Check for users that are not found first
-    const notFoundUsers = task.assignees.filter(
-      (username) => !userMap.has(username.toLowerCase()),
-    );
+    const notFoundUsers = task.assignees.filter((username) => !userMap.has(username.toLowerCase()));
 
     if (notFoundUsers.length > 0) {
       warnings.push(`Users not found: ${notFoundUsers.join(', ')}`);
@@ -405,9 +430,10 @@ export class TaskCreationService {
 
     if (userIds.length > 0 && createdTask.id) {
       try {
-        await client.tasks.bulkAssignUsersToTask(createdTask.id, {
-          user_ids: userIds,
-        });
+        // Assign each user individually (bulk endpoint doesn't work in Vikunja)
+        for (const userId of userIds) {
+          await client.tasks.assignUserToTask(createdTask.id, userId);
+        }
       } catch (assignError) {
         logger.error('Failed to assign users to task', {
           taskId: createdTask.id,
@@ -415,7 +441,9 @@ export class TaskCreationService {
           assignees: task.assignees,
           error: assignError instanceof Error ? assignError.message : String(assignError),
         });
-        warnings.push(`Failed to assign users: ${assignError instanceof Error ? assignError.message : 'Unknown error'}`);
+        warnings.push(
+          `Failed to assign users: ${assignError instanceof Error ? assignError.message : 'Unknown error'}`,
+        );
       }
     }
 
@@ -429,7 +457,10 @@ export class TaskCreationService {
    * @param reminders - Array of reminder data
    * @returns Warning message about API limitation
    */
-  private handleReminders(taskId: number | undefined, reminders: Array<{ reminder_date?: string; reminder?: string }>): string {
+  private handleReminders(
+    taskId: number | undefined,
+    reminders: Array<{ reminder_date?: string; reminder?: string }>,
+  ): string {
     // Note: The API doesn't support adding reminders separately,
     // they need to be added during task creation
     // This is a limitation of the current implementation

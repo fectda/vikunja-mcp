@@ -2,11 +2,29 @@
  * Main orchestration for bulk operations
  */
 
-import { MCPError, ErrorCode, createStandardResponse, getClientFromContext, logger, isAuthenticationError, RETRY_CONFIG, transformApiError, handleFetchError } from '../../../index';
+import {
+  MCPError,
+  ErrorCode,
+  createStandardResponse,
+  getClientFromContext,
+  logger,
+  isAuthenticationError,
+  RETRY_CONFIG,
+  transformApiError,
+  handleFetchError,
+} from '../../../index';
 import { withRetry } from '../../../utils/retry';
 import type { BatchResult } from '../../../utils/performance/batch-processor';
 import type { Task, VikunjaClient } from 'node-vikunja';
-import { BatchProcessorFactory, BulkOperationValidator, BulkOperationErrorHandler, type BulkUpdateArgs, type BulkDeleteArgs, type BulkCreateArgs, type BulkCreateTaskData } from './index';
+import {
+  BatchProcessorFactory,
+  BulkOperationValidator,
+  BulkOperationErrorHandler,
+  type BulkUpdateArgs,
+  type BulkDeleteArgs,
+  type BulkCreateArgs,
+  type BulkCreateTaskData,
+} from './index';
 import { convertRepeatConfiguration } from '../validation';
 import { REPEAT_MODE_MAP } from '../constants';
 
@@ -18,7 +36,9 @@ export const BulkOperationProcessor = {
   /**
    * Bulk update tasks with fallback support
    */
-  async bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  async bulkUpdateTasks(
+    args: BulkUpdateArgs,
+  ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     try {
       // Validate inputs
       BulkOperationValidator.validateBulkUpdate(args);
@@ -36,7 +56,11 @@ export const BulkOperationProcessor = {
         return await BulkOperationProcessor.attemptBulkUpdateAPI(args, taskIds, client);
       } catch (bulkError) {
         // Fall back to individual updates
-        return await BulkOperationErrorHandler.handleBulkUpdateFallback(args, taskIds, bulkError as Error);
+        return await BulkOperationErrorHandler.handleBulkUpdateFallback(
+          args,
+          taskIds,
+          bulkError as Error,
+        );
       }
     } catch (error) {
       // Re-throw MCPError instances without modification
@@ -45,11 +69,12 @@ export const BulkOperationProcessor = {
       }
 
       // Handle fetch/connection errors with helpful guidance
-      if (error instanceof Error && (
-        error.message.includes('fetch failed') ||
-        error.message.includes('ECONNREFUSED') ||
-        error.message.includes('ENOTFOUND')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('fetch failed') ||
+          error.message.includes('ECONNREFUSED') ||
+          error.message.includes('ENOTFOUND'))
+      ) {
         throw handleFetchError(error, 'bulk update tasks');
       }
 
@@ -64,7 +89,7 @@ export const BulkOperationProcessor = {
   async attemptBulkUpdateAPI(
     args: BulkUpdateArgs,
     taskIds: number[],
-    client: VikunjaClient
+    client: VikunjaClient,
   ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     // Build the bulk update operation
     // Note: args.field and args.value are validated to be non-undefined in BulkOperationValidator
@@ -87,7 +112,10 @@ export const BulkOperationProcessor = {
     const bulkUpdateResult = await client.tasks.bulkUpdateTasks(bulkOperation);
 
     // Handle inconsistent return types from the bulk update API
-    const { updatedTasks, bulkUpdateSuccessful } = BulkOperationProcessor.processBulkUpdateResult(args, bulkUpdateResult);
+    const { updatedTasks, bulkUpdateSuccessful } = BulkOperationProcessor.processBulkUpdateResult(
+      args,
+      bulkUpdateResult,
+    );
 
     if (!bulkUpdateSuccessful) {
       throw new Error('Bulk update API reported success but did not update task values');
@@ -100,13 +128,23 @@ export const BulkOperationProcessor = {
         async (taskId: number) => {
           return await client.tasks.getTask(taskId);
         },
-        'bulk_update_fetch'
+        'bulk_update_fetch',
       );
 
-      return BulkOperationProcessor.createUpdateResponse(taskIds, fetchResult.successful, args.field || 'unknown', fetchResult.failed.length);
+      return BulkOperationProcessor.createUpdateResponse(
+        taskIds,
+        fetchResult.successful,
+        args.field || 'unknown',
+        fetchResult.failed.length,
+      );
     }
 
-    return BulkOperationProcessor.createUpdateResponse(taskIds, updatedTasks, args.field || 'unknown', 0);
+    return BulkOperationProcessor.createUpdateResponse(
+      taskIds,
+      updatedTasks,
+      args.field || 'unknown',
+      0,
+    );
   },
 
   /**
@@ -114,8 +152,8 @@ export const BulkOperationProcessor = {
    */
   processBulkUpdateResult(
     args: BulkUpdateArgs,
-    bulkUpdateResult: unknown
-  ): { updatedTasks: Task[], bulkUpdateSuccessful: boolean } {
+    bulkUpdateResult: unknown,
+  ): { updatedTasks: Task[]; bulkUpdateSuccessful: boolean } {
     let updatedTasks: Task[] = [];
     let bulkUpdateSuccessful = false;
 
@@ -127,13 +165,18 @@ export const BulkOperationProcessor = {
         for (const task of bulkUpdateResult) {
           // Type guard to ensure task is a valid Task object
           if (!BulkOperationProcessor.isValidTask(task)) {
-            logger.warn('Bulk update API returned invalid task object', { task: JSON.stringify(task) });
+            logger.warn('Bulk update API returned invalid task object', {
+              task: JSON.stringify(task),
+            });
             bulkUpdateSuccessful = false;
             break;
           }
 
           const fieldName = args.field;
-          if (!fieldName || !BulkOperationProcessor.verifyTaskFieldValue(task, fieldName, args.value)) {
+          if (
+            !fieldName ||
+            !BulkOperationProcessor.verifyTaskFieldValue(task, fieldName, args.value)
+          ) {
             logger.warn(`Bulk update API returned task with unchanged ${fieldName || 'unknown'}`, {
               taskId: task.id,
               expected: args.value,
@@ -199,7 +242,7 @@ export const BulkOperationProcessor = {
     taskIds: number[],
     updatedTasks: Task[],
     field: string,
-    fetchErrors: number
+    fetchErrors: number,
   ): { content: Array<{ type: 'text'; text: string }> } {
     const response = createStandardResponse(
       'update-task',
@@ -226,7 +269,9 @@ export const BulkOperationProcessor = {
   /**
    * Bulk delete tasks
    */
-  async bulkDeleteTasks(args: BulkDeleteArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  async bulkDeleteTasks(
+    args: BulkDeleteArgs,
+  ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     try {
       BulkOperationValidator.validateBulkDelete(args);
 
@@ -242,7 +287,7 @@ export const BulkOperationProcessor = {
         async (taskId: number) => {
           return await client.tasks.getTask(taskId);
         },
-        'bulk_delete_fetch'
+        'bulk_delete_fetch',
       );
 
       const tasksToDelete = fetchResult.successful;
@@ -254,7 +299,7 @@ export const BulkOperationProcessor = {
           await client.tasks.deleteTask(taskId);
           return { taskId, deleted: true };
         },
-        'bulk_delete_execution'
+        'bulk_delete_execution',
       );
 
       return BulkOperationProcessor.processDeleteResults(taskIds, deletionResult, tasksToDelete);
@@ -265,11 +310,12 @@ export const BulkOperationProcessor = {
       }
 
       // Handle fetch/connection errors with helpful guidance
-      if (error instanceof Error && (
-        error.message.includes('fetch failed') ||
-        error.message.includes('ECONNREFUSED') ||
-        error.message.includes('ENOTFOUND')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('fetch failed') ||
+          error.message.includes('ECONNREFUSED') ||
+          error.message.includes('ENOTFOUND'))
+      ) {
         throw handleFetchError(error, 'bulk delete tasks');
       }
 
@@ -283,8 +329,8 @@ export const BulkOperationProcessor = {
    */
   processDeleteResults(
     taskIds: number[],
-    deletionResult: BatchResult<{ taskId: number; deleted: boolean; }>,
-    tasksToDelete: Task[]
+    deletionResult: BatchResult<{ taskId: number; deleted: boolean }>,
+    tasksToDelete: Task[],
   ): { content: Array<{ type: 'text'; text: string }> } {
     const failures = deletionResult.failed;
 
@@ -348,20 +394,28 @@ export const BulkOperationProcessor = {
   /**
    * Bulk create tasks
    */
-  async bulkCreateTasks(args: BulkCreateArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  async bulkCreateTasks(
+    args: BulkCreateArgs,
+  ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     try {
       BulkOperationValidator.validateBulkCreate(args);
 
       const client = await getClientFromContext();
       const projectId = args.projectId;
       if (!projectId) {
-        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'projectId is required for bulk task creation');
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'projectId is required for bulk task creation',
+        );
       }
 
       // Create tasks using batch processor
       const tasks = args.tasks;
       if (!tasks) {
-        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'tasks array is required for bulk task creation');
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'tasks array is required for bulk task creation',
+        );
       }
       const creationResult = await BatchProcessorFactory.getCreateProcessor().processBatches(
         tasks.map((_, index) => index), // Use indices as items
@@ -370,8 +424,13 @@ export const BulkOperationProcessor = {
           if (!taskData) {
             throw new Error(`Task data at index ${index} is undefined`);
           }
-          return await BulkOperationProcessor.createIndividualTask(client, projectId, taskData, index);
-        }
+          return await BulkOperationProcessor.createIndividualTask(
+            client,
+            projectId,
+            taskData,
+            index,
+          );
+        },
       );
 
       return BulkOperationProcessor.processCreateResults(creationResult);
@@ -382,11 +441,12 @@ export const BulkOperationProcessor = {
       }
 
       // Handle fetch/connection errors with helpful guidance
-      if (error instanceof Error && (
-        error.message.includes('fetch failed') ||
-        error.message.includes('ECONNREFUSED') ||
-        error.message.includes('ENOTFOUND')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('fetch failed') ||
+          error.message.includes('ECONNREFUSED') ||
+          error.message.includes('ENOTFOUND'))
+      ) {
         throw handleFetchError(error, 'bulk create tasks');
       }
 
@@ -402,7 +462,7 @@ export const BulkOperationProcessor = {
     client: VikunjaClient,
     projectId: number,
     taskData: BulkCreateTaskData,
-    _index: number
+    _index: number,
   ): Promise<Task> {
     // Create the base task
     const newTask: Task = {
@@ -416,12 +476,8 @@ export const BulkOperationProcessor = {
 
     // Handle repeat configuration
     if (taskData.repeatAfter !== undefined || taskData.repeatMode !== undefined) {
-      const repeatConfig = convertRepeatConfiguration(
-        taskData.repeatAfter,
-        taskData.repeatMode,
-      );
-      if (repeatConfig.repeat_after !== undefined)
-        newTask.repeat_after = repeatConfig.repeat_after;
+      const repeatConfig = convertRepeatConfiguration(taskData.repeatAfter, taskData.repeatMode);
+      if (repeatConfig.repeat_after !== undefined) newTask.repeat_after = repeatConfig.repeat_after;
       if (repeatConfig.repeat_mode !== undefined) {
         (newTask as Record<string, unknown>).repeat_mode = repeatConfig.repeat_mode;
       }
@@ -455,34 +511,33 @@ export const BulkOperationProcessor = {
   async handleTaskPostCreation(
     client: VikunjaClient,
     taskId: number,
-    taskData: BulkCreateTaskData
+    taskData: BulkCreateTaskData,
   ): Promise<void> {
     // Add labels and assignees if provided
     if (taskData.labels && taskData.labels.length > 0) {
       await withRetry(
-        () => client.tasks.updateTaskLabels(taskId, {
-          label_ids: taskData.labels || [],
-        }),
+        () =>
+          client.tasks.updateTaskLabels(taskId, {
+            label_ids: taskData.labels || [],
+          }),
         {
           maxRetries: RETRY_CONFIG.AUTH_ERRORS.maxRetries,
           timeout: RETRY_CONFIG.AUTH_ERRORS.initialDelay + RETRY_CONFIG.AUTH_ERRORS.maxDelay,
-          shouldRetry: (error: unknown) => isAuthenticationError(error)
-        }
+          shouldRetry: (error: unknown) => isAuthenticationError(error),
+        },
       );
     }
 
     if (taskData.assignees && taskData.assignees.length > 0) {
       try {
-        await withRetry(
-          () => client.tasks.bulkAssignUsersToTask(taskId, {
-            user_ids: taskData.assignees || [],
-          }),
-          {
+        // Assign each user individually (bulk endpoint doesn't work in Vikunja)
+        for (const userId of taskData.assignees) {
+          await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
             maxRetries: RETRY_CONFIG.AUTH_ERRORS.maxRetries,
             timeout: RETRY_CONFIG.AUTH_ERRORS.initialDelay + RETRY_CONFIG.AUTH_ERRORS.maxDelay,
-            shouldRetry: (error: unknown) => isAuthenticationError(error)
-          }
-        );
+            shouldRetry: (error: unknown) => isAuthenticationError(error),
+          });
+        }
       } catch (assigneeError) {
         if (isAuthenticationError(assigneeError)) {
           throw new MCPError(
@@ -500,7 +555,9 @@ export const BulkOperationProcessor = {
   /**
    * Process create operation results
    */
-  processCreateResults(creationResult: BatchResult<Task>): { content: Array<{ type: 'text'; text: string }> } {
+  processCreateResults(creationResult: BatchResult<Task>): {
+    content: Array<{ type: 'text'; text: string }>;
+  } {
     const successfulTasks = creationResult.successful;
     const failedTasks = creationResult.failed.map((f) => ({
       index: f.originalItem as number,

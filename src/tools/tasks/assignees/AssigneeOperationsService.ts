@@ -16,26 +16,25 @@ import { AUTH_ERROR_MESSAGES } from '../constants';
 export const AssigneeOperationsService = {
   /**
    * Assign multiple users to a task
+   * Uses single assign endpoint as bulk endpoint doesn't work in Vikunja
    */
   async assignUsersToTask(taskId: number, assigneeIds: number[]): Promise<void> {
     const client = await getClientFromContext();
 
     try {
-      await withRetry(
-        () => client.tasks.bulkAssignUsersToTask(taskId, {
-          user_ids: assigneeIds,
-        }),
-        {
+      // Assign each user individually (bulk endpoint doesn't work in Vikunja)
+      for (const userId of assigneeIds) {
+        await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
           ...RETRY_CONFIG.AUTH_ERRORS,
-          shouldRetry: (error) => isAuthenticationError(error)
-        }
-      );
+          shouldRetry: (error) => isAuthenticationError(error),
+        });
+      }
     } catch (assigneeError) {
       // Check if it's an auth error after retries
       if (isAuthenticationError(assigneeError)) {
         throw new MCPError(
           ErrorCode.API_ERROR,
-          `${AUTH_ERROR_MESSAGES.ASSIGNEE_ASSIGN} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+          `${AUTH_ERROR_MESSAGES.ASSIGNEE_ASSIGN} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`,
         );
       }
       throw assigneeError;
@@ -51,19 +50,16 @@ export const AssigneeOperationsService = {
     // Remove users from the task with retry logic
     for (const userId of userIds) {
       try {
-        await withRetry(
-          () => client.tasks.removeUserFromTask(taskId, userId),
-          {
-            ...RETRY_CONFIG.AUTH_ERRORS,
-            shouldRetry: (error) => isAuthenticationError(error)
-          }
-        );
+        await withRetry(() => client.tasks.removeUserFromTask(taskId, userId), {
+          ...RETRY_CONFIG.AUTH_ERRORS,
+          shouldRetry: (error) => isAuthenticationError(error),
+        });
       } catch (removeError) {
         // Check if it's an auth error after retries
         if (isAuthenticationError(removeError)) {
           throw new MCPError(
             ErrorCode.API_ERROR,
-            `${AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+            `${AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`,
           );
         }
         throw removeError;
@@ -79,7 +75,10 @@ export const AssigneeOperationsService = {
     const task = await client.tasks.getTask(taskId);
     // Ensure required properties exist for TaskWithAssignees
     if (!task.id) {
-      throw new MCPError(ErrorCode.INTERNAL_ERROR, 'Task returned from API is missing required id field');
+      throw new MCPError(
+        ErrorCode.INTERNAL_ERROR,
+        'Task returned from API is missing required id field',
+      );
     }
     return {
       ...task,
@@ -107,5 +106,5 @@ export const AssigneeOperationsService = {
       title: task.title,
       assignees: assignees,
     };
-  }
+  },
 };

@@ -744,12 +744,86 @@ async function testTaskExtras(): Promise<void> {
   }
 }
 
+// ============================================================================
+// Tier 1: Assignees
+// ============================================================================
+
+async function testTaskAssignees(): Promise<void> {
+  log('\n  Task Assignees:');
+
+  let taskId: number | null = null;
+  let userId: number | null = null;
+
+  // Get current user
+  try {
+    const user = await api<{ id: number }>('GET', '/user');
+    userId = user.id;
+  } catch (e) {
+    fail('assignees (setup)', (e as Error).message);
+    return;
+  }
+
+  // Create task
+  try {
+    const task = await api<{ id: number }>('PUT', `/projects/${ctx.projectId}/tasks`, {
+      title: 'test-assign-task',
+    });
+    taskId = task.id;
+    ctx.taskIds.push(task.id);
+  } catch (e) {
+    fail('assignees (setup)', (e as Error).message);
+    return;
+  }
+
+  // Test single assign
+  try {
+    await api('PUT', `/tasks/${taskId}/assignees`, { user_id: userId });
+
+    // Verify assignment
+    const task = await api<{ assignees: Array<{ id: number }> | null }>('GET', `/tasks/${taskId}`);
+    const assignees = task.assignees || [];
+
+    if (!assignees.some((a) => a.id === userId)) {
+      fail('assign single user', `User ${userId} not found in assignees`);
+    } else {
+      pass('assign single user');
+    }
+  } catch (e) {
+    fail('assign single user', (e as Error).message);
+  }
+
+  // Test remove assign
+  try {
+    await api('DELETE', `/tasks/${taskId}/assignees/${userId}`);
+
+    // Verify removal
+    const task = await api<{ assignees: Array<{ id: number }> | null }>('GET', `/tasks/${taskId}`);
+    const assignees = task.assignees || [];
+
+    if (assignees.some((a) => a.id === userId)) {
+      fail('remove assignee', `User ${userId} still in assignees`);
+    } else {
+      pass('remove assignee');
+    }
+  } catch (e) {
+    fail('remove assignee', (e as Error).message);
+  }
+
+  // Cleanup
+  try {
+    await api('DELETE', `/tasks/${taskId}`);
+  } catch {
+    /* ignore */
+  }
+}
+
 async function runTier2Tests(): Promise<void> {
   log('\n[Tier 2: Smoke Tests]');
 
   await testFilters();
   await testBulkOperations();
   await testTaskExtras();
+  await testTaskAssignees();
 }
 
 // ============================================================================

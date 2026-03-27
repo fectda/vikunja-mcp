@@ -25,7 +25,7 @@ export const bulkOperationErrorHandler = {
   async handleBulkUpdateFallback(
     args: BulkUpdateArgs,
     taskIds: number[],
-    bulkError: Error
+    bulkError: Error,
   ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     logger.warn('Bulk update API failed, falling back to individual updates', {
       error: bulkError instanceof Error ? bulkError.message : String(bulkError),
@@ -40,7 +40,7 @@ export const bulkOperationErrorHandler = {
       async (taskId: number) => {
         return await this.updateIndividualTask(client, taskId, args);
       },
-      'bulk_update_individual_fallback'
+      'bulk_update_individual_fallback',
     );
 
     // Process results and handle failures
@@ -53,7 +53,7 @@ export const bulkOperationErrorHandler = {
   async updateIndividualTask(
     client: VikunjaClient,
     taskId: number,
-    args: BulkUpdateArgs
+    args: BulkUpdateArgs,
   ): Promise<Task> {
     // Fetch current task to preserve required fields
     const currentTask = await client.tasks.getTask(taskId);
@@ -77,7 +77,7 @@ export const bulkOperationErrorHandler = {
     client: VikunjaClient,
     taskId: number,
     args: BulkUpdateArgs,
-    _updatedTask: Task
+    _updatedTask: Task,
   ): Promise<void> {
     if (args.field === 'assignees' && Array.isArray(args.value)) {
       await this.handleAssigneeUpdate(client, taskId, args.value as number[]);
@@ -85,13 +85,14 @@ export const bulkOperationErrorHandler = {
 
     if (args.field === 'labels' && Array.isArray(args.value)) {
       await withRetry(
-        () => client.tasks.updateTaskLabels(taskId, {
-          label_ids: args.value as number[],
-        }),
+        () =>
+          client.tasks.updateTaskLabels(taskId, {
+            label_ids: args.value as number[],
+          }),
         {
           ...RETRY_CONFIG.AUTH_ERRORS,
-          shouldRetry: (error) => isAuthenticationError(error)
-        }
+          shouldRetry: (error) => isAuthenticationError(error),
+        },
       );
     }
   },
@@ -102,36 +103,30 @@ export const bulkOperationErrorHandler = {
   async handleAssigneeUpdate(
     client: VikunjaClient,
     taskId: number,
-    newAssigneeIds: number[]
+    newAssigneeIds: number[],
   ): Promise<void> {
     try {
       // Replace all assignees with the new list
       const currentTaskWithAssignees = await client.tasks.getTask(taskId);
-      const currentAssigneeIds = currentTaskWithAssignees.assignees?.map((a: Assignee) => a.id) || [];
+      const currentAssigneeIds =
+        currentTaskWithAssignees.assignees?.map((a: Assignee) => a.id) || [];
 
       // Add new assignees first to avoid leaving task unassigned
-      if (newAssigneeIds.length > 0) {
-        await withRetry(
-          () => client.tasks.bulkAssignUsersToTask(taskId, {
-            user_ids: newAssigneeIds,
-          }),
-          {
-            ...RETRY_CONFIG.AUTH_ERRORS,
-            shouldRetry: (error) => isAuthenticationError(error)
-          }
-        );
+      // Use single assign endpoint as bulk endpoint doesn't work in Vikunja
+      for (const userId of newAssigneeIds) {
+        await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
+          ...RETRY_CONFIG.AUTH_ERRORS,
+          shouldRetry: (error) => isAuthenticationError(error),
+        });
       }
 
       // Remove old assignees only after new ones are successfully added
       for (const userId of currentAssigneeIds) {
         try {
-          await withRetry(
-            () => client.tasks.removeUserFromTask(taskId, userId),
-            {
-              ...RETRY_CONFIG.AUTH_ERRORS,
-              shouldRetry: (error) => isAuthenticationError(error)
-            }
-          );
+          await withRetry(() => client.tasks.removeUserFromTask(taskId, userId), {
+            ...RETRY_CONFIG.AUTH_ERRORS,
+            shouldRetry: (error) => isAuthenticationError(error),
+          });
         } catch (removeError) {
           if (isAuthenticationError(removeError)) {
             throw new MCPError(
@@ -146,7 +141,7 @@ export const bulkOperationErrorHandler = {
       if (isAuthenticationError(assigneeError)) {
         throw new MCPError(
           ErrorCode.API_ERROR,
-          `${AUTH_ERROR_MESSAGES.ASSIGNEE_BULK_UPDATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+          `${AUTH_ERROR_MESSAGES.ASSIGNEE_BULK_UPDATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`,
         );
       }
       throw assigneeError;
@@ -159,7 +154,7 @@ export const bulkOperationErrorHandler = {
   async processUpdateResults(
     args: BulkUpdateArgs,
     taskIds: number[],
-    updateResult: BatchResult<Task>
+    updateResult: BatchResult<Task>,
   ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     const failures = updateResult.failed;
     const successCount = updateResult.successful.length;
@@ -179,7 +174,7 @@ export const bulkOperationErrorHandler = {
           const client = await getClientFromContext();
           return await client.tasks.getTask(taskId);
         },
-        'bulk_update_final_fetch'
+        'bulk_update_final_fetch',
       );
 
       updatedTasks = fetchResult.successful;
@@ -198,7 +193,8 @@ export const bulkOperationErrorHandler = {
         performanceMetrics: {
           totalDuration: updateResult.metrics.totalDuration,
           operationsPerSecond: updateResult.metrics.operationsPerSecond,
-          apiCallsUsed: updateResult.metrics.successfulOperations + updateResult.metrics.failedOperations,
+          apiCallsUsed:
+            updateResult.metrics.successfulOperations + updateResult.metrics.failedOperations,
         },
       },
     );
@@ -224,7 +220,7 @@ export const bulkOperationErrorHandler = {
   handleUpdateFailures(
     args: BulkUpdateArgs,
     failures: Array<{ index: number; error: unknown; originalItem: unknown }>,
-    successCount: number
+    successCount: number,
   ): void {
     const failedIds = failures.map((f) => f.originalItem);
 
@@ -261,5 +257,5 @@ export const bulkOperationErrorHandler = {
         `Bulk update failed. Could not update any tasks. Failed IDs: ${failedIds.join(', ')}`,
       );
     }
-  }
+  },
 };
