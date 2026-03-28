@@ -22,7 +22,7 @@ class CircuitBreakerRegistry {
   }
 
   async resetAll(): Promise<void> {
-    const promises = Array.from(this.breakers.values()).map(breaker => {
+    const promises = Array.from(this.breakers.values()).map((breaker) => {
       return new Promise<void>((resolve) => {
         if (breaker.opened) {
           breaker.close();
@@ -80,7 +80,7 @@ const DEFAULT_OPTIONS: Required<Omit<RetryOptions, 'shouldRetry'>> = {
   volumeThreshold: 5,
   initialDelay: 1000,
   backoffFactor: 2,
-  maxDelay: 30000
+  maxDelay: 30000,
 };
 
 /**
@@ -89,7 +89,7 @@ const DEFAULT_OPTIONS: Required<Omit<RetryOptions, 'shouldRetry'>> = {
 export function createCircuitBreaker<T>(
   operation: () => Promise<T>,
   name: string,
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): CircuitBreaker {
   // Check if a circuit breaker with this name already exists
   const existingBreaker = circuitBreakerRegistry.get(name);
@@ -103,7 +103,7 @@ export function createCircuitBreaker<T>(
     timeout: opts.timeout,
     resetTimeout: opts.resetTimeout,
     errorThresholdPercentage: opts.errorThresholdPercentage,
-    volumeThreshold: opts.volumeThreshold
+    volumeThreshold: opts.volumeThreshold,
   });
 
   // Register with the global registry
@@ -117,11 +117,18 @@ export function createCircuitBreaker<T>(
 }
 
 /**
- * Execute operation with automatic retry and circuit breaking
+ * Execute operation with automatic retry (without circuit breaker)
+ *
+ * Note: Circuit breaker is intentionally NOT used here because:
+ * 1. It adds unnecessary overhead for individual operation retries
+ * 2. Sharing circuit breaker state across different operations causes bugs
+ * 3. The retry logic itself handles transient failures correctly
+ *
+ * Use withNamedRetry() if you specifically need circuit breaker protection.
  */
 export async function withRetry<T>(
   operation: () => Promise<T>,
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<T> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   let lastError: unknown;
@@ -129,9 +136,8 @@ export async function withRetry<T>(
 
   for (let attempt = 0; attempt <= (opts.maxRetries || 3); attempt++) {
     try {
-      // Use circuit breaker for the operation
-      const breaker = createCircuitBreaker(operation, 'anonymous', opts);
-      return await breaker.fire() as Promise<T>;
+      // Execute operation directly - no circuit breaker for individual retries
+      return await operation();
     } catch (error) {
       lastError = error;
 
@@ -146,10 +152,10 @@ export async function withRetry<T>(
       }
 
       // Log retry attempt
-      logger.debug(`Retry attempt ${attempt + 1}/${opts.maxRetries || 3} after ${delay}ms`);
+      logger.debug('Retry attempt %d/%d after %dms', attempt + 1, opts.maxRetries || 3, delay);
 
       // Wait before retrying with exponential backoff
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
       delay = Math.min(delay * (opts.backoffFactor || 2), opts.maxDelay || 30000);
     }
   }
@@ -163,7 +169,7 @@ export async function withRetry<T>(
 export async function withNamedRetry<T>(
   operation: () => Promise<T>,
   name: string,
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<T> {
   const breaker = createCircuitBreaker(operation, name, options);
   return breaker.fire() as Promise<T>;
@@ -192,12 +198,14 @@ export function isRetryableError(error: unknown): error is ErrorWithCode {
     }
 
     const message = error.message.toLowerCase();
-    return message.includes('timeout') ||
-           message.includes('connection') ||
-           message.includes('network') ||
-           message.includes('rate limit') ||
-           (error as ErrorWithCode).code === 'ECONNRESET' ||
-           (error as ErrorWithCode).code === 'ETIMEDOUT';
+    return (
+      message.includes('timeout') ||
+      message.includes('connection') ||
+      message.includes('network') ||
+      message.includes('rate limit') ||
+      (error as ErrorWithCode).code === 'ECONNRESET' ||
+      (error as ErrorWithCode).code === 'ETIMEDOUT'
+    );
   }
   return false;
 }
@@ -208,19 +216,21 @@ export function isRetryableError(error: unknown): error is ErrorWithCode {
 export function isTransientError(error: unknown): error is ErrorWithCode {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
-    return message.includes('timeout') ||
-           message.includes('timed out') ||
-           message.includes('connection') ||
-           message.includes('network') ||
-           message.includes('rate limit') ||
-           message.includes('socket') ||
-           message.includes('hang up') ||
-           message.includes('econnreset') ||
-           message.includes('etimedout') ||
-           message.includes('reset by peer') ||
-           message.includes('closed unexpectedly') ||
-           (error as ErrorWithCode).code === 'ECONNRESET' ||
-           (error as ErrorWithCode).code === 'ETIMEDOUT';
+    return (
+      message.includes('timeout') ||
+      message.includes('timed out') ||
+      message.includes('connection') ||
+      message.includes('network') ||
+      message.includes('rate limit') ||
+      message.includes('socket') ||
+      message.includes('hang up') ||
+      message.includes('econnreset') ||
+      message.includes('etimedout') ||
+      message.includes('reset by peer') ||
+      message.includes('closed unexpectedly') ||
+      (error as ErrorWithCode).code === 'ECONNRESET' ||
+      (error as ErrorWithCode).code === 'ETIMEDOUT'
+    );
   }
   return false;
 }
@@ -235,7 +245,7 @@ export const RETRY_CONFIG = {
     maxDelay: 10000,
     backoffFactor: 2,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'vikunja-auth-connect'
+    circuitBreakerName: 'vikunja-auth-connect',
   },
   NETWORK_ERRORS: {
     maxRetries: 5,
@@ -243,7 +253,7 @@ export const RETRY_CONFIG = {
     maxDelay: 30000,
     backoffFactor: 1.5,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'vikunja-api-operations'
+    circuitBreakerName: 'vikunja-api-operations',
   },
   TASK_OPERATIONS: {
     maxRetries: 3,
@@ -251,7 +261,7 @@ export const RETRY_CONFIG = {
     maxDelay: 15000,
     backoffFactor: 2,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'vikunja-task-create'
+    circuitBreakerName: 'vikunja-task-create',
   },
   BULK_OPERATIONS: {
     maxRetries: 2,
@@ -259,8 +269,8 @@ export const RETRY_CONFIG = {
     maxDelay: 20000,
     backoffFactor: 1.5,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'vikunja-bulk-operations'
-  }
+    circuitBreakerName: 'vikunja-bulk-operations',
+  },
 } as const;
 
 /**
@@ -286,7 +296,7 @@ export const CIRCUIT_BREAKER_NAMES = {
   PROJECT_SHARING: 'vikunja-project-sharing',
   BULK_OPERATIONS: 'vikunja-bulk-operations',
   BULK_IMPORT: 'vikunja-bulk-import',
-  BULK_EXPORT: 'vikunja-bulk-export'
+  BULK_EXPORT: 'vikunja-bulk-export',
 } as const;
 
 /**
@@ -295,7 +305,7 @@ export const CIRCUIT_BREAKER_NAMES = {
 export async function withTaskRetry<T>(
   operation: () => Promise<T>,
   operationType: 'create' | 'update' | 'delete' | 'get',
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<T> {
   const name = `vikunja-task-${operationType}`;
   return withNamedRetry(operation, name, options);
@@ -307,7 +317,7 @@ export async function withTaskRetry<T>(
 export async function withBulkRetry<T>(
   operation: () => Promise<T>,
   operationType: 'import' | 'export',
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<T> {
   const name = `vikunja-bulk-${operationType}`;
   return withNamedRetry(operation, name, options);

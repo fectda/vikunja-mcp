@@ -12,6 +12,9 @@ import { parseMarkdown } from '../utils/markdown';
 // Mock the clearGlobalClientFactory function
 jest.mock('../../src/client', () => ({
   clearGlobalClientFactory: jest.fn(),
+  getClientFromContext: jest.fn(),
+  createVikunjaClientFactory: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
 }));
 
 // Mock the direct middleware to bypass middleware
@@ -21,7 +24,9 @@ jest.mock('../../src/middleware/direct-middleware', () => ({
 
 // Mock security utils
 jest.mock('../../src/utils/security', () => ({
-  createSecureConnectionMessage: jest.fn((url, token) => `Connecting to ${url} with token ${token.slice(0, 4)}...`),
+  createSecureConnectionMessage: jest.fn(
+    (url, token) => `Connecting to ${url} with token ${token.slice(0, 4)}...`,
+  ),
 }));
 
 // Mock logger
@@ -74,7 +79,7 @@ describe('Auth Tool', () => {
     // Capture the tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_auth',
-      'Manage authentication with Vikunja API (connect, status, refresh, disconnect)',
+      'Manage authentication with Vikunja API (connect, status, refresh, disconnect, login)',
       expect.any(Object),
       expect.any(Function),
     );
@@ -131,23 +136,31 @@ describe('Auth Tool', () => {
     });
 
     it('should throw error when apiUrl is missing', async () => {
-      await expect(callTool('connect', {
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow(MCPError);
-      
-      await expect(callTool('connect', {
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow('apiUrl and apiToken are required for connect');
+      await expect(
+        callTool('connect', {
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow(MCPError);
+
+      await expect(
+        callTool('connect', {
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow('apiUrl and apiToken are required for connect');
     });
 
     it('should throw error when apiToken is missing', async () => {
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-      })).rejects.toThrow(MCPError);
-      
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-      })).rejects.toThrow('apiUrl and apiToken are required for connect');
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+        }),
+      ).rejects.toThrow(MCPError);
+
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+        }),
+      ).rejects.toThrow('apiUrl and apiToken are required for connect');
     });
 
     it('should handle connection errors', async () => {
@@ -159,19 +172,24 @@ describe('Auth Tool', () => {
         throw connectionError;
       });
 
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow(MCPError);
-      
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow('Authentication error: Network error');
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow(MCPError);
+
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow('Authentication error: Network error');
     });
 
     it('should auto-detect and connect with JWT token', async () => {
-      const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const jwtToken =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
       // Mock getStatus to return not authenticated
       mockAuthManager.getStatus.mockReturnValue({ authenticated: false });
@@ -182,10 +200,7 @@ describe('Auth Tool', () => {
         apiToken: jwtToken,
       });
 
-      expect(mockAuthManager.connect).toHaveBeenCalledWith(
-        'https://vikunja.example.com',
-        jwtToken,
-      );
+      expect(mockAuthManager.connect).toHaveBeenCalledWith('https://vikunja.example.com', jwtToken);
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
@@ -287,7 +302,29 @@ describe('Auth Tool', () => {
   });
 
   describe('refresh subcommand', () => {
-    it('should return message that refresh is not required', async () => {
+    it('should refresh JWT token successfully', async () => {
+      // Setup: authenticated with JWT
+      mockAuthManager.getStatus.mockReturnValue({
+        authenticated: true,
+        apiUrl: 'https://vikunja.example.com',
+        authType: 'jwt',
+      });
+
+      // Mock the client factory and methods
+      const {
+        getClientFromContext,
+        createVikunjaClientFactory,
+        setGlobalClientFactory,
+      } = require('../../src/client');
+      const mockClient = {
+        auth: {
+          renewToken: jest.fn().mockResolvedValue({ token: 'eyJ_new_jwt_token' }),
+        },
+      };
+      getClientFromContext.mockResolvedValue(mockClient);
+      createVikunjaClientFactory.mockResolvedValue({});
+      setGlobalClientFactory.mockResolvedValue(undefined);
+
       const result = await callTool('refresh');
 
       expect(result.content[0].type).toBe('text');
@@ -296,8 +333,27 @@ describe('Auth Tool', () => {
       const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('auth-refresh');
-      expect(markdown).toContain('Token refresh not required');
-      expect(markdown).toContain('tokens do not expire');
+      expect(markdown).toContain('Token refreshed successfully');
+    });
+
+    it('should fail refresh for API tokens', async () => {
+      // Setup: authenticated with API token
+      mockAuthManager.getStatus.mockReturnValue({
+        authenticated: true,
+        apiUrl: 'https://vikunja.example.com',
+        authType: 'api-token',
+      });
+
+      await expect(callTool('refresh')).rejects.toThrow(
+        'Token refresh is only supported for JWT tokens',
+      );
+    });
+
+    it('should fail refresh when not authenticated', async () => {
+      // Setup: not authenticated
+      mockAuthManager.getStatus.mockReturnValue({ authenticated: false });
+
+      await expect(callTool('refresh')).rejects.toThrow('Not authenticated');
     });
   });
 
@@ -358,16 +414,16 @@ describe('Auth Tool', () => {
     it('should never log plaintext tokens in connect attempts', async () => {
       const sensitiveToken = 'tk_very_secret_api_token_123456789';
       const apiUrl = 'https://vikunja.example.com/api/v1';
-      
+
       // Mock successful connection
       mockAuthManager.getStatus.mockReturnValue({ authenticated: false });
       mockAuthManager.connect.mockReturnValue(undefined);
       mockAuthManager.getAuthType.mockReturnValue('api-token');
-      
+
       // Execute the tool
       await callTool('connect', {
         apiUrl,
-        apiToken: sensitiveToken
+        apiToken: sensitiveToken,
       });
 
       // Verify logger.debug was called
@@ -380,7 +436,7 @@ describe('Auth Tool', () => {
         const logMessage = call.join(' ');
         expect(logMessage).not.toContain('very_secret_api_token_123456789');
         expect(logMessage).not.toContain(sensitiveToken);
-        
+
         // If it mentions a token, it should be masked
         if (logMessage.toLowerCase().includes('token')) {
           expect(logMessage).toMatch(/tk_v\.\.\./); // Should be masked to first 4 chars
@@ -392,7 +448,7 @@ describe('Auth Tool', () => {
       const testTokens = [
         'tk_short123456789',
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.very_long_jwt_payload.signature',
-        'api_key_supersecret123456789'
+        'api_key_supersecret123456789',
       ];
 
       for (const token of testTokens) {
@@ -407,20 +463,20 @@ describe('Auth Tool', () => {
         // Execute the tool
         await callTool('connect', {
           apiUrl: 'https://test.example.com',
-          apiToken: token
+          apiToken: token,
         });
 
         // Verify no plaintext token in logs
         const loggerSpy = require('../../src/utils/logger').logger.debug;
         const debugCalls = loggerSpy.mock.calls;
-        
+
         debugCalls.forEach((call: any[]) => {
           const logMessage = call.join(' ');
           expect(logMessage).not.toContain(token);
-          
+
           // Should show only first 4 characters + ellipsis
           if (logMessage.toLowerCase().includes('token')) {
-            expect(logMessage).toMatch(/\w{4}\.\.\./); 
+            expect(logMessage).toMatch(/\w{4}\.\.\./);
           }
         });
       }
@@ -459,10 +515,12 @@ describe('Auth Tool', () => {
         throw mcpError;
       });
 
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow(mcpError);
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow(mcpError);
     });
 
     it('should handle non-Error object thrown during connect', async () => {
@@ -471,10 +529,12 @@ describe('Auth Tool', () => {
         throw { message: 'custom error object' };
       });
 
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow('Authentication error: [object Object]');
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow('Authentication error: custom error object');
     });
 
     it('should handle status when MCPError is thrown', async () => {
@@ -496,9 +556,21 @@ describe('Auth Tool', () => {
     });
 
     it('should handle refresh error propagation', async () => {
-      // Test that refresh path can handle errors if they occur
-      // Since refresh is a simple operation that doesn't interact with external systems,
-      // we'll just verify it executes successfully
+      // Test that refresh works when authenticated with JWT
+      mockAuthManager.getStatus.mockReturnValue({
+        authenticated: true,
+        apiUrl: 'https://vikunja.example.com',
+        authType: 'jwt',
+      });
+
+      const { getClientFromContext } = require('../../src/client');
+      const mockClient = {
+        auth: {
+          renewToken: jest.fn().mockResolvedValue({ token: 'eyJ_new_jwt' }),
+        },
+      };
+      getClientFromContext.mockResolvedValue(mockClient);
+
       const result = await callTool('refresh');
 
       expect(result.content[0].type).toBe('text');
@@ -510,22 +582,28 @@ describe('Auth Tool', () => {
     });
 
     it('should validate URL format', async () => {
-      await expect(callTool('connect', {
-        apiUrl: 'not-a-valid-url',
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow();
+      await expect(
+        callTool('connect', {
+          apiUrl: 'not-a-valid-url',
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow();
     });
 
     it('should handle empty string parameters', async () => {
-      await expect(callTool('connect', {
-        apiUrl: '',
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow();
+      await expect(
+        callTool('connect', {
+          apiUrl: '',
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow();
 
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-        apiToken: '',
-      })).rejects.toThrow();
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+          apiToken: '',
+        }),
+      ).rejects.toThrow();
     });
 
     it('should handle status with partial authentication info', async () => {
@@ -551,9 +629,7 @@ describe('Auth Tool', () => {
         throw error;
       });
 
-      await expect(callTool('status')).rejects.toThrow(
-        'Authentication error: Status check failed'
-      );
+      await expect(callTool('status')).rejects.toThrow('Authentication error: Status check failed');
     });
 
     it('should test Promise.resolve path in connect success', async () => {
@@ -575,26 +651,32 @@ describe('Auth Tool', () => {
 
     it('should handle all possible error code paths', async () => {
       // Test validation error path
-      await expect(callTool('connect', {
-        // Missing both required fields
-      })).rejects.toThrow(MCPError);
+      await expect(
+        callTool('connect', {
+          // Missing both required fields
+        }),
+      ).rejects.toThrow(MCPError);
 
       // Test unknown subcommand validation
       await expect(callTool('invalid_subcommand' as any)).rejects.toThrow(
-        'Unknown subcommand: invalid_subcommand'
+        'Unknown subcommand: invalid_subcommand',
       );
     });
 
     it('should handle null/undefined in parameters gracefully', async () => {
-      await expect(callTool('connect', {
-        apiUrl: null as any,
-        apiToken: 'tk_test-token-123',
-      })).rejects.toThrow();
+      await expect(
+        callTool('connect', {
+          apiUrl: null as any,
+          apiToken: 'tk_test-token-123',
+        }),
+      ).rejects.toThrow();
 
-      await expect(callTool('connect', {
-        apiUrl: 'https://vikunja.example.com',
-        apiToken: null as any,
-      })).rejects.toThrow();
+      await expect(
+        callTool('connect', {
+          apiUrl: 'https://vikunja.example.com',
+          apiToken: null as any,
+        }),
+      ).rejects.toThrow();
     });
 
     it('should test security logging with edge case tokens', async () => {
@@ -615,13 +697,13 @@ describe('Auth Tool', () => {
         try {
           await callTool('connect', {
             apiUrl: 'https://test.example.com',
-            apiToken: token
+            apiToken: token,
           });
 
           // Check logging doesn't expose the full token (beyond first 4 chars)
           const loggerSpy = require('../../src/utils/logger').logger.debug;
           const debugCalls = loggerSpy.mock.calls;
-          
+
           debugCalls.forEach((call: any[]) => {
             const logMessage = call.join(' ');
             // Should not contain the full token, only the masked version

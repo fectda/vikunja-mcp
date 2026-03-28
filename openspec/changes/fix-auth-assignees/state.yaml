@@ -1,0 +1,22 @@
+change: fix-auth-assignees
+status: in_progress
+phase: apply
+artifacts:
+  proposal: openspec/changes/fix-auth-assignees/proposal.md
+  specs: openspec/changes/fix-auth-assignees/specs.md
+  design: openspec/changes/fix-auth-assignees/design.md
+  tasks: openspec/changes/fix-auth-assignees/tasks.md
+completed_tasks:
+  - '1.1 Fix auto-login condition in src/index.ts'
+  - '1.2 Update auto-authentication to respect JWT priority'
+  - '2.1 Fix circuit breaker naming in withRetry'
+  - '3.1 Preserve MCPError in assignee operations'
+  - '3.3 Update constants.ts with better auth error messages'
+  - '4.1 Add auth type logging at startup'
+  - '4.2 Add auth type to vikunja_auth status response'
+  - '5.1 Add updateToken method to AuthManager'
+  - '5.2 Implement real refresh in auth tool'
+  - '6.1 Add login subcommand to vikunja_auth'
+  - '6.2 Reinitialize client factory after login'
+  - '7.1 Update existing tests (lint, typecheck)'
+next_recommended: 'Run tests and verify implementation'

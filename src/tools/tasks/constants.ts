@@ -21,6 +21,40 @@ export const AUTH_ERROR_MESSAGES = {
   LABEL_UPDATE: 'Label update operation failed.',
 };
 
+// API Token specific error messages (when JWT is required but API token is used)
+export const API_TOKEN_ERROR_MESSAGES = {
+  ASSIGNEE_OPERATION:
+    'Assignment failed: API tokens (tk_*) do not support assignee operations in Vikunja.\n\n' +
+    'This is a known limitation - Vikunja requires JWT authentication for:\n' +
+    '- Assigning users to tasks\n' +
+    '- Removing users from tasks\n' +
+    '- Applying labels to tasks\n' +
+    '- User management endpoints\n\n' +
+    'Solutions (choose one):\n' +
+    '1. Enable auto-login JWT: Set VIKUNJA_USER and VIKUNJA_PASSWORD in .env\n' +
+    '2. Use JWT token directly: Connect with a JWT token starting with "eyJ"\n' +
+    '3. Login via MCP: Use vikunja_auth.login({ apiUrl, username, password })',
+  LABEL_OPERATION:
+    'Label operation failed: API tokens (tk_*) do not support label operations in Vikunja.\n\n' +
+    'This is a known limitation - Vikunja requires JWT authentication for:\n' +
+    '- Applying labels to tasks\n' +
+    '- Removing labels from tasks\n\n' +
+    'Solutions (choose one):\n' +
+    '1. Enable auto-login JWT: Set VIKUNJA_USER and VIKUNJA_PASSWORD in .env\n' +
+    '2. Use JWT token directly: Connect with a JWT token starting with "eyJ"\n' +
+    '3. Login via MCP: Use vikunja_auth.login({ apiUrl, username, password })',
+  USER_OPERATION:
+    'User operation failed: API tokens (tk_*) do not support user endpoints in Vikunja.\n\n' +
+    'This is a known limitation - Vikunja requires JWT authentication for:\n' +
+    '- Getting current user\n' +
+    '- Searching users\n' +
+    '- User settings\n\n' +
+    'Solutions (choose one):\n' +
+    '1. Enable auto-login JWT: Set VIKUNJA_USER and VIKUNJA_PASSWORD in .env\n' +
+    '2. Use JWT token directly: Connect with a JWT token starting with "eyJ"\n' +
+    '3. Login via MCP: Use vikunja_auth.login({ apiUrl, username, password })',
+};
+
 // Bulk operation constants
 export const BULK_OPERATION_BATCH_SIZE = 10;
 export const MAX_BULK_OPERATION_TASKS = 100;

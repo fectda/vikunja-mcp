@@ -22,16 +22,13 @@ import {
 dotenv.config({ quiet: true });
 
 // Auto-login: if VIKUNJA_USER and VIKUNJA_PASSWORD are provided, obtain JWT automatically
-async function autoLoginWithCredentials(): Promise<void> {
+// JWT always takes priority over API tokens because API tokens have limited permissions
+// in Vikunja (assignees, labels, and user endpoints require JWT).
+async function autoLoginWithCredentials(): Promise<string | null> {
   const vikunjaUrl = process.env.VIKUNJA_URL;
-  if (
-    process.env.VIKUNJA_USER &&
-    process.env.VIKUNJA_PASSWORD &&
-    !process.env.VIKUNJA_API_TOKEN &&
-    vikunjaUrl
-  ) {
+  if (process.env.VIKUNJA_USER && process.env.VIKUNJA_PASSWORD && vikunjaUrl) {
     const loginUrl = vikunjaUrl.replace('/api/v1', '') + '/api/v1/login';
-    logger.info('Attempting auto-login with credentials for user:', process.env.VIKUNJA_USER);
+    logger.info('Attempting auto-login with credentials for user: %s', process.env.VIKUNJA_USER);
 
     try {
       const response = await fetch(loginUrl, {
@@ -47,14 +44,22 @@ async function autoLoginWithCredentials(): Promise<void> {
 
       if (data.token) {
         process.env.VIKUNJA_API_TOKEN = data.token;
-        logger.info('Successfully logged in as', process.env.VIKUNJA_USER);
+        logger.info('✅ Auto-login JWT successful — full API access available');
+        return data.token;
       } else {
-        logger.warn('Auto-login failed:', data.message || 'No token received');
+        logger.warn('⚠️ Auto-login failed: %s', data.message || 'No token received');
+        if (process.env.VIKUNJA_API_TOKEN) {
+          logger.warn('📋 Falling back to API token — assignees/labels may not work');
+        }
       }
     } catch (error) {
-      logger.error('Auto-login error:', error instanceof Error ? error.message : String(error));
+      logger.error('Auto-login error: %s', error instanceof Error ? error.message : String(error));
+      if (process.env.VIKUNJA_API_TOKEN) {
+        logger.warn('📋 Falling back to API token — assignees/labels may not work');
+      }
     }
   }
+  return null;
 }
 
 const server = new McpServer({
@@ -100,17 +105,39 @@ export const factoryInitializationPromise = initializeFactory()
   });
 
 // Run auto-login first if credentials are provided, then auto-authenticate
-void autoLoginWithCredentials().then(() => {
-  // Continue with auto-authentication after login attempt
-  if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
-    const connectionMessage = createSecureConnectionMessage(
-      process.env.VIKUNJA_URL,
-      process.env.VIKUNJA_API_TOKEN,
+// JWT always takes priority when both credentials and API token exist
+void autoLoginWithCredentials().then((jwtToken) => {
+  if (!process.env.VIKUNJA_URL) {
+    logger.warn('VIKUNJA_URL not set — skipping auto-authentication');
+    return;
+  }
+
+  // Prefer JWT from auto-login, fall back to API token
+  const token = jwtToken || process.env.VIKUNJA_API_TOKEN;
+  if (!token) {
+    logger.warn('No authentication token available — connect manually with vikunja_auth');
+    return;
+  }
+
+  const authType = jwtToken ? '(from auto-login)' : '(direct token)';
+  const tokenPrefix = token.substring(0, 10) + '...';
+  const connectionMessage = createSecureConnectionMessage(process.env.VIKUNJA_URL, token);
+  logger.info('Auto-authenticating %s: %s', authType, connectionMessage);
+  authManager.connect(process.env.VIKUNJA_URL, token);
+
+  const detectedAuthType = authManager.getAuthType();
+  logger.info(
+    'Auth type: %s | Source: %s | Token prefix: %s',
+    detectedAuthType,
+    authType,
+    tokenPrefix,
+  );
+
+  if (detectedAuthType === 'api-token') {
+    logger.warn(
+      '⚠️ Using API token — assignee/label operations and user endpoints may not work. ' +
+        'Provide VIKUNJA_USER + VIKUNJA_PASSWORD for full JWT access.',
     );
-    logger.info(`Auto-authenticating: ${connectionMessage}`);
-    authManager.connect(process.env.VIKUNJA_URL, process.env.VIKUNJA_API_TOKEN);
-    const detectedAuthType = authManager.getAuthType();
-    logger.info(`Using detected auth type: ${detectedAuthType}`);
   }
 });
 

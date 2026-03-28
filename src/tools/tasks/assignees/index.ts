@@ -7,6 +7,8 @@ import { MCPError, ErrorCode } from '../../../types';
 import { AssigneeOperationsService } from './AssigneeOperationsService';
 import { AssigneeValidationService } from './AssigneeValidationService';
 import { AssigneeResponseFormatter } from './AssigneeResponseFormatter';
+import { isAuthenticationError } from '../../../utils/auth-error-handler';
+import { logger } from '../../../utils/logger';
 
 /**
  * Assign users to a task
@@ -27,8 +29,28 @@ export async function assignUsers(args: {
     // Format and return response
     const response = AssigneeResponseFormatter.formatAssignResponse(task);
     return AssigneeResponseFormatter.formatMcpResponse(response);
-
   } catch (error) {
+    // Preserve MCPError to keep specific error messages
+    if (error instanceof MCPError) {
+      throw error;
+    }
+
+    // Check if it's an authentication error - provide specific guidance
+    if (isAuthenticationError(error)) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('Assign operation failed with auth error: %s', errorMessage);
+
+      throw new MCPError(
+        ErrorCode.PERMISSION_DENIED,
+        'Assignment failed: API tokens (tk_*) do not support assignee operations in Vikunja.\n\n' +
+          'Solutions (choose one):\n' +
+          '1. Enable auto-login JWT: Set VIKUNJA_USER and VIKUNJA_PASSWORD in .env\n' +
+          '2. Use JWT token directly: Connect with a JWT token starting with "eyJ"\n' +
+          '3. Login via MCP: Use vikunja_auth.login({ apiUrl, username, password })\n\n' +
+          `Original error: ${errorMessage}`,
+      );
+    }
+
     throw new MCPError(
       ErrorCode.API_ERROR,
       `Failed to assign users to task: ${error instanceof Error ? error.message : String(error)}`,
@@ -55,8 +77,28 @@ export async function unassignUsers(args: {
     // Format and return response
     const response = AssigneeResponseFormatter.formatUnassignResponse(task);
     return AssigneeResponseFormatter.formatMcpResponse(response);
-
   } catch (error) {
+    // Preserve MCPError to keep specific error messages
+    if (error instanceof MCPError) {
+      throw error;
+    }
+
+    // Check if it's an authentication error - provide specific guidance
+    if (isAuthenticationError(error)) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('Unassign operation failed with auth error: %s', errorMessage);
+
+      throw new MCPError(
+        ErrorCode.PERMISSION_DENIED,
+        'Unassignment failed: API tokens (tk_*) do not support assignee operations in Vikunja.\n\n' +
+          'Solutions (choose one):\n' +
+          '1. Enable auto-login JWT: Set VIKUNJA_USER and VIKUNJA_PASSWORD in .env\n' +
+          '2. Use JWT token directly: Connect with a JWT token starting with "eyJ"\n' +
+          '3. Login via MCP: Use vikunja_auth.login({ apiUrl, username, password })\n\n' +
+          `Original error: ${errorMessage}`,
+      );
+    }
+
     throw new MCPError(
       ErrorCode.API_ERROR,
       `Failed to remove users from task: ${error instanceof Error ? error.message : String(error)}`,
@@ -81,9 +123,11 @@ export async function listAssignees(args: {
     const assigneeCount = AssigneeOperationsService.extractAssignees(task).length;
 
     // Format and return response
-    const response = AssigneeResponseFormatter.formatListAssigneesResponse(minimalTask, assigneeCount);
+    const response = AssigneeResponseFormatter.formatListAssigneesResponse(
+      minimalTask,
+      assigneeCount,
+    );
     return AssigneeResponseFormatter.formatMcpResponse(response);
-
   } catch (error) {
     if (error instanceof MCPError) {
       throw error;
