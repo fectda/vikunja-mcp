@@ -5,29 +5,20 @@
 // Error message constants
 export const AUTH_ERROR_MESSAGES = {
   ASSIGNEE_CREATE:
-    'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation. The task was created but assignees could not be added.',
+    'Assignee operation failed. The user may not have access to the project. ' +
+    'Share the project with the user first before assigning them to tasks.',
   ASSIGNEE_UPDATE:
-    'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation. Other task fields were updated but assignees could not be changed.',
+    'Assignee update operation failed. The user may not have access to the project. ' +
+    'Share the project with the user first before assigning them to tasks.',
   ASSIGNEE_ASSIGN:
-    'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation that prevents assigning users to tasks.',
-  ASSIGNEE_REMOVE:
-    'Assignee removal operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation that prevents removing users from tasks.',
+    'Assignee operation failed. The user may not have access to the project. ' +
+    'Share the project with the user first before assigning them to tasks.',
+  ASSIGNEE_REMOVE: 'Assignee removal operation failed.',
   ASSIGNEE_REMOVE_PARTIAL:
-    'Assignee removal operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation. New assignees were added but old assignees could not be removed.',
-  ASSIGNEE_BULK_UPDATE:
-    'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation that prevents bulk updating assignees.',
-  LABEL_CREATE:
-    'Label operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation. The task was created but labels could not be added.',
-  LABEL_UPDATE:
-    'Label operations may have authentication issues with certain Vikunja API versions. ' +
-    'This is a known limitation. Other task fields were updated but labels could not be changed.',
+    'Assignee removal operation partially failed. New assignees were added but old assignees could not be removed.',
+  ASSIGNEE_BULK_UPDATE: 'Assignee bulk update operation failed.',
+  LABEL_CREATE: 'Label operation failed.',
+  LABEL_UPDATE: 'Label update operation failed.',
 };
 
 // Bulk operation constants

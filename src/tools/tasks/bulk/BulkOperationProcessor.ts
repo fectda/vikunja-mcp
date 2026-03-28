@@ -529,25 +529,37 @@ export const BulkOperationProcessor = {
     }
 
     if (taskData.assignees && taskData.assignees.length > 0) {
-      try {
-        // Assign each user individually (bulk endpoint doesn't work in Vikunja)
-        for (const userId of taskData.assignees) {
+      // Assign each user individually (bulk endpoint doesn't work in Vikunja)
+      for (const userId of taskData.assignees) {
+        try {
           await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
             maxRetries: RETRY_CONFIG.AUTH_ERRORS.maxRetries,
             timeout: RETRY_CONFIG.AUTH_ERRORS.initialDelay + RETRY_CONFIG.AUTH_ERRORS.maxDelay,
             shouldRetry: (error: unknown) => isAuthenticationError(error),
           });
+        } catch (userError) {
+          // Check for specific Vikunja error codes
+          const errorObj = userError as { code?: number; message?: string };
+
+          if (errorObj.code === 7003) {
+            // User does not have access to the project
+            throw new MCPError(
+              ErrorCode.PERMISSION_DENIED,
+              `Cannot assign user ${userId} to task: This user does not have access to the project. ` +
+                `Share the project with the user first before assigning them to tasks.`,
+            );
+          }
+
+          if (errorObj.code === 1005) {
+            // User does not exist
+            throw new MCPError(
+              ErrorCode.NOT_FOUND,
+              `Cannot assign user ${userId} to task: User does not exist.`,
+            );
+          }
+
+          throw userError;
         }
-      } catch (assigneeError) {
-        if (isAuthenticationError(assigneeError)) {
-          throw new MCPError(
-            ErrorCode.API_ERROR,
-            'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-              'This is a known limitation. The task was created but assignees could not be added. ' +
-              `(Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times). Task ID: ${taskId}`,
-          );
-        }
-        throw assigneeError;
       }
     }
   },

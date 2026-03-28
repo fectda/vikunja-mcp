@@ -244,17 +244,49 @@ async function addAssigneesToTask(
 
     // Assign each user individually (bulk endpoint doesn't work in Vikunja)
     for (const userId of assigneeIds) {
-      await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
-        ...RETRY_CONFIG.AUTH_ERRORS,
-        shouldRetry: (error) => isAuthenticationError(error),
-      });
+      try {
+        await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
+          ...RETRY_CONFIG.AUTH_ERRORS,
+          shouldRetry: (error) => isAuthenticationError(error),
+        });
+      } catch (userError) {
+        // Check for specific Vikunja error codes
+        const errorObj = userError as { code?: number; message?: string };
+
+        if (errorObj.code === 7003) {
+          // User does not have access to the project
+          throw new MCPError(
+            ErrorCode.PERMISSION_DENIED,
+            `Cannot assign user ${userId} to task: This user does not have access to the project. ` +
+              `Share the project with the user first before assigning them to tasks.`,
+          );
+        }
+
+        if (errorObj.code === 1005) {
+          // User does not exist
+          throw new MCPError(
+            ErrorCode.NOT_FOUND,
+            `Cannot assign user ${userId} to task: User does not exist.`,
+          );
+        }
+
+        // Log other errors for debugging
+        logger.error('Failed to assign user to task', {
+          taskId,
+          userId,
+          error: userError instanceof Error ? userError.message : String(userError),
+          errorCode: errorObj.code,
+        });
+        throw userError;
+      }
     }
   } catch (assigneeError) {
     // Check if it's an auth error after retries
     if (isAuthenticationError(assigneeError)) {
       throw new MCPError(
         ErrorCode.API_ERROR,
-        `${AUTH_ERROR_MESSAGES.ASSIGNEE_CREATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times). Task ID: ${taskId}`,
+        `Assignee operation failed due to authentication issue. Task ID: ${taskId}. ` +
+          `Please verify your API token has permission to assign users.`,
       );
     }
     throw assigneeError;
