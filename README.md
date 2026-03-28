@@ -2,8 +2,15 @@
 
 A Model Context Protocol (MCP) server that enables AI assistants to interact with Vikunja task management instances.
 
+## Version
+
+**v0.2.2** - Latest release with authentication improvements
+
 ## Features
 
+- **JWT Auto-Login** - Automatically obtain JWT tokens from username/password credentials
+- **Login MCP Tool** - Obtain JWT without server restart
+- **Token Refresh** - Refresh expired JWT tokens
 - **Subcommand-based tools** for intuitive AI interactions
 - **Session-based authentication** with automatic token management
 - **Full task management** operations implemented
@@ -28,24 +35,28 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
 This release represents a **massive architectural simplification** that eliminates technical debt while enhancing security and reliability:
 
 ### Storage Architecture Refactoring (90% Code Reduction)
+
 - **Before**: 33 files, 9,803 lines of over-engineered storage system
 - **After**: 4 files, essential functionality only
 - **Eliminated**: Complex orchestrators, health monitors, statistics tracking, migration systems
 - **Result**: Same external API with dramatically improved maintainability
 
 ### Zod-Based Filter System (850+ Lines Removed)
+
 - **Before**: Custom tokenizer, parser, and validator with security vulnerabilities
 - **After**: Secure Zod schema validation with production-ready parsing
 - **Enhanced**: DoS protection, input sanitization, and comprehensive error handling
 - **Result**: Faster parsing, better security, and enterprise-grade reliability
 
 ### Production-Ready Retry System (580+ Lines Replaced)
+
 - **Before**: Custom retry logic with maintenance overhead
 - **After**: Battle-tested opossum circuit breaker library
 - **Features**: Circuit breaker state sharing, automatic recovery, comprehensive monitoring
 - **Result**: Production resilience with battle-tested patterns
 
 ### Zero Breaking Changes
+
 All improvements maintain **100% backward compatibility** with existing implementations while providing enhanced reliability and security.
 
 ## Requirements
@@ -115,6 +126,7 @@ LOG_LEVEL=debug
 ```
 
 Log output includes timestamps and log levels:
+
 ```
 [2025-05-25T17:00:00.000Z] [INFO] Vikunja MCP server started
 [2025-05-25T17:00:00.100Z] [DEBUG] Executing tasks tool { subcommand: 'list', args: {...} }
@@ -126,6 +138,25 @@ All logs are written to stderr to keep stdout reserved for MCP protocol communic
 
 The Vikunja MCP server supports two authentication methods, each with different capabilities:
 
+### Auto-Login JWT (Recommended)
+
+The easiest way to get full API access is to use automatic JWT login:
+
+```bash
+# Environment variables - JWT obtained automatically
+VIKUNJA_URL=https://your-vikunja-instance.com/api/v1
+VIKUNJA_USER=your_username
+VIKUNJA_PASSWORD=your_password
+```
+
+The server will automatically:
+
+1. Attempt to login with credentials on startup
+2. Use the JWT token for all operations
+3. Provide full API access (assignees, labels, users, export)
+
+> **Note:** If login fails, it falls back to API token with a warning.
+
 ### API Token Authentication (Default)
 
 API tokens are the standard authentication method for Vikunja:
@@ -133,14 +164,14 @@ API tokens are the standard authentication method for Vikunja:
 - **How to obtain:** Go to Vikunja Settings → API Tokens → Create new token
 - **Token format:** Starts with `tk_` (e.g., `tk_abc123def456`)
 - **Capabilities:** Full access to tasks, projects, labels, teams, and webhooks
-- **Limitations:** Cannot access user-specific endpoints (user profile, settings, export)
+- **Limitations:** Cannot access user-specific endpoints (user profile, settings, export), assignee/label write operations may fail with some Vikunja versions
 - **Best for:** Automation, CI/CD, and general task management
 
 ### JWT Authentication (Advanced)
 
 JWT (JSON Web Token) authentication provides full access to all Vikunja endpoints:
 
-- **How to obtain:** Extract from your browser session (see instructions below)
+- **How to obtain:** Extract from your browser session OR use auto-login above
 - **Token format:** Long string starting with `eyJ` (standard JWT format)
 - **Capabilities:** Full access to all endpoints including user management and export
 - **Limitations:** Tokens expire (typically after 24 hours)
@@ -162,12 +193,13 @@ JWT (JSON Web Token) authentication provides full access to all Vikunja endpoint
 ```typescript
 // Connect with JWT token - automatically detected!
 vikunja_auth.connect({
-  apiUrl: "https://your-vikunja-instance.com/api/v1",
-  apiToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-})
+  apiUrl: 'https://your-vikunja-instance.com/api/v1',
+  apiToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+});
 ```
 
 **Important Notes:**
+
 - JWT tokens expire; you'll need to extract a new one when it expires
 - Token type is automatically detected based on format (no flag needed)
 - Some tools (users, export) are only available with JWT authentication
@@ -175,24 +207,26 @@ vikunja_auth.connect({
 ## Quick Start
 
 1. **Set up authentication (if not using environment variables):**
+
    ```typescript
    vikunja_auth.connect({
-     apiUrl: "https://your-vikunja-instance.com/api/v1",
-     apiToken: "your-api-token"
-   })
+     apiUrl: 'https://your-vikunja-instance.com/api/v1',
+     apiToken: 'your-api-token',
+   });
    ```
 
 2. **Create your first task:**
+
    ```typescript
    vikunja_tasks.create({
      projectId: 1,
-     title: "My first task via MCP!"
-   })
+     title: 'My first task via MCP!',
+   });
    ```
 
 3. **List all your tasks:**
    ```typescript
-   vikunja_tasks.list({ allProjects: true })
+   vikunja_tasks.list({ allProjects: true });
    ```
 
 ## Usage
@@ -204,21 +238,31 @@ The MCP server exposes tools with subcommands. All operations require authentica
 ```typescript
 // Connect with API token (automatically detected)
 vikunja_auth.connect({
-  apiUrl: "https://your-vikunja-instance.com/api/v1",
-  apiToken: "tk_your-api-token"
-})
+  apiUrl: 'https://your-vikunja-instance.com/api/v1',
+  apiToken: 'tk_your-api-token',
+});
 
 // Connect with JWT token (automatically detected, enables additional tools: users, export)
 vikunja_auth.connect({
-  apiUrl: "https://your-vikunja-instance.com/api/v1",
-  apiToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-})
+  apiUrl: 'https://your-vikunja-instance.com/api/v1',
+  apiToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+});
 
 // Check authentication status
-vikunja_auth.status()
+vikunja_auth.status();
+
+// Refresh JWT token (if expired)
+vikunja_auth.refresh();
+
+// Login with username/password to obtain JWT
+vikunja_auth.login({
+  apiUrl: 'https://your-vikunja-instance.com/api/v1',
+  username: 'your_username',
+  password: 'your_password',
+});
 
 // Disconnect and clean up resources
-vikunja_auth.disconnect()
+vikunja_auth.disconnect();
 ```
 
 ### Task Management Examples
@@ -391,7 +435,7 @@ vikunja_tasks.bulk-create({
       labels: [1, 2]
     },
     {
-      title: "Task 2", 
+      title: "Task 2",
       dueDate: "2024-12-31T23:59:59Z",
       assignees: [1]
     },
@@ -485,14 +529,14 @@ vikunja_batch_import({
 // Export a project with all its data
 vikunja_export_project({
   projectId: 1,
-  includeChildren: false  // Only export the specified project
-})
+  includeChildren: false, // Only export the specified project
+});
 
 // Export a project including all child projects
 vikunja_export_project({
   projectId: 1,
-  includeChildren: true  // Recursively export child projects
-})
+  includeChildren: true, // Recursively export child projects
+});
 
 // The export returns JSON data with the following structure:
 // {
@@ -506,71 +550,71 @@ vikunja_export_project({
 
 // Request a full user data export (sent via email)
 vikunja_request_user_export({
-  password: "your-password"  // Required for security
-})
+  password: 'your-password', // Required for security
+});
 
 // Download a previously requested user data export
 vikunja_download_user_export({
-  password: "your-password"  // Required for security
-})
+  password: 'your-password', // Required for security
+});
 ```
 
 ### Project Management Examples
 
 ```typescript
 // List all projects
-vikunja_projects.list()
+vikunja_projects.list();
 
 // List projects with search and pagination
 vikunja_projects.list({
-  search: "frontend",
+  search: 'frontend',
   page: 1,
   perPage: 10,
-  isArchived: false
-})
+  isArchived: false,
+});
 
 // Get a specific project
-vikunja_projects.get({ id: 1 })
+vikunja_projects.get({ id: 1 });
 
 // Create a new project
 vikunja_projects.create({
-  title: "New Frontend Project",
-  description: "React-based web application",
-  hexColor: "#4287f5"
-})
+  title: 'New Frontend Project',
+  description: 'React-based web application',
+  hexColor: '#4287f5',
+});
 
 // Update a project
 vikunja_projects.update({
   id: 1,
-  title: "Updated Project Name",
-  isArchived: true
-})
+  title: 'Updated Project Name',
+  isArchived: true,
+});
 
 // Archive a project
-vikunja_projects.archive({ id: 1 })
+vikunja_projects.archive({ id: 1 });
 
 // Unarchive a project
-vikunja_projects.unarchive({ id: 1 })
+vikunja_projects.unarchive({ id: 1 });
 
 // Delete a project
-vikunja_projects.delete({ id: 1 })
+vikunja_projects.delete({ id: 1 });
 
 // --- Project Hierarchy Management ---
 
 // Create a child project
 vikunja_projects.create({
-  title: "Frontend Module",
-  description: "React components",
-  parentProjectId: 1,  // Will be a child of project 1
-  hexColor: "#3498db"
-})
+  title: 'Frontend Module',
+  description: 'React components',
+  parentProjectId: 1, // Will be a child of project 1
+  hexColor: '#3498db',
+});
 
 // Get all direct children of a project
-vikunja_projects.get-children({ id: 1 })
+vikunja_projects.get - children({ id: 1 });
 // Returns: Array of projects that have parentProjectId = 1
 
 // Get complete project hierarchy as a tree
-vikunja_projects.get-tree({ id: 1 })
+vikunja_projects.get - tree({ id: 1 });
 // Returns: Project with nested children structure
 // {
 //   id: 1,
@@ -593,7 +637,7 @@ vikunja_projects.get-tree({ id: 1 })
 // }
 
 // Get breadcrumb path from root to a project
-vikunja_projects.get-breadcrumb({ id: 5 })
+vikunja_projects.get - breadcrumb({ id: 5 });
 // Returns: Array of projects from root to target
 // [
 //   { id: 1, title: "Main Project" },
@@ -603,125 +647,135 @@ vikunja_projects.get-breadcrumb({ id: 5 })
 // Also includes a formatted path: "Main Project > Frontend Module > Styles"
 
 // Move a project to a new parent
-vikunja_projects.move({ 
-  id: 5,              // Project to move
-  parentProjectId: 3  // New parent
-})
+vikunja_projects.move({
+  id: 5, // Project to move
+  parentProjectId: 3, // New parent
+});
 // Validates against circular references and depth limits
 
 // Move a project to root level (no parent)
-vikunja_projects.move({ 
+vikunja_projects.move({
   id: 5,
-  parentProjectId: undefined
-})
+  parentProjectId: undefined,
+});
 
 // --- Project Sharing ---
 
 // Create a read-only share link
-vikunja_projects.create-share({ 
-  id: 1,
-  right: 0,  // 0=Read, 1=Write, 2=Admin
-  label: "Public read-only access"
-})
+vikunja_projects.create -
+  share({
+    id: 1,
+    right: 0, // 0=Read, 1=Write, 2=Admin
+    label: 'Public read-only access',
+  });
 
 // Create a password-protected share with write access
-vikunja_projects.create-share({ 
-  id: 1,
-  right: 1,
-  password: "securepassword123",
-  label: "Team collaboration link"
-})
+vikunja_projects.create -
+  share({
+    id: 1,
+    right: 1,
+    password: 'securepassword123',
+    label: 'Team collaboration link',
+  });
 
 // Create an expiring share link
-vikunja_projects.create-share({ 
-  id: 1,
-  right: 0,
-  expires: "2025-12-31T23:59:59Z",
-  label: "Temporary access until year end"
-})
+vikunja_projects.create -
+  share({
+    id: 1,
+    right: 0,
+    expires: '2025-12-31T23:59:59Z',
+    label: 'Temporary access until year end',
+  });
 
 // List all shares for a project
-vikunja_projects.list-shares({ id: 1 })
+vikunja_projects.list - shares({ id: 1 });
 
 // Get details of a specific share
-vikunja_projects.get-share({ 
-  id: 1, 
-  shareId: 123 
-})
+vikunja_projects.get -
+  share({
+    id: 1,
+    shareId: 123,
+  });
 
 // Delete a share link
-vikunja_projects.delete-share({ 
-  id: 1, 
-  shareId: 123 
-})
+vikunja_projects.delete -
+  share({
+    id: 1,
+    shareId: 123,
+  });
 
 // Authenticate to access a shared project
-vikunja_projects.auth-share({ 
-  shareHash: "abc123def456" 
-})
+vikunja_projects.auth -
+  share({
+    shareHash: 'abc123def456',
+  });
 
 // Authenticate to a password-protected share
-vikunja_projects.auth-share({ 
-  shareHash: "abc123def456",
-  password: "securepassword123"
-})
+vikunja_projects.auth -
+  share({
+    shareHash: 'abc123def456',
+    password: 'securepassword123',
+  });
 ```
 
 ### Label Management Examples
 
 ```typescript
 // List all labels
-vikunja_labels.list()
+vikunja_labels.list();
 
 // Search for labels
 vikunja_labels.list({
-  search: "bug",
+  search: 'bug',
   page: 1,
-  perPage: 20
-})
+  perPage: 20,
+});
 
 // Get a specific label
-vikunja_labels.get({ id: 1 })
+vikunja_labels.get({ id: 1 });
 
 // Create a new label
 vikunja_labels.create({
-  title: "Critical",
-  description: "Critical priority issues",
-  hexColor: "#ff0000"
-})
+  title: 'Critical',
+  description: 'Critical priority issues',
+  hexColor: '#ff0000',
+});
 
 // Update a label
 vikunja_labels.update({
   id: 1,
-  title: "High Priority",
-  hexColor: "#ff6600"
-})
+  title: 'High Priority',
+  hexColor: '#ff6600',
+});
 
 // Delete a label
-vikunja_labels.delete({ id: 1 })
+vikunja_labels.delete({ id: 1 });
 
 // --- Label Assignment to Tasks ---
 
 // Apply multiple labels to a task
-vikunja_tasks.apply-label({
-  id: 123,
-  labels: [1, 2, 3]  // Apply labels with IDs 1, 2, and 3
-})
+vikunja_tasks.apply -
+  label({
+    id: 123,
+    labels: [1, 2, 3], // Apply labels with IDs 1, 2, and 3
+  });
 
 // Apply a single label
-vikunja_tasks.apply-label({
-  id: 123,
-  labels: [1]  // Apply just the "research" label
-})
+vikunja_tasks.apply -
+  label({
+    id: 123,
+    labels: [1], // Apply just the "research" label
+  });
 
 // Remove specific labels from a task
-vikunja_tasks.remove-label({
-  id: 123,
-  labels: [2, 3]  // Remove labels 2 and 3, keep others
-})
+vikunja_tasks.remove -
+  label({
+    id: 123,
+    labels: [2, 3], // Remove labels 2 and 3, keep others
+  });
 
 // List all labels on a task
-vikunja_tasks.list-labels({ id: 123 })
+vikunja_tasks.list - labels({ id: 123 });
 // Returns: Task info with detailed label data including colors and descriptions
 ```
 
@@ -729,23 +783,23 @@ vikunja_tasks.list-labels({ id: 123 })
 
 ```typescript
 // List all teams
-vikunja_teams.list()
+vikunja_teams.list();
 
 // Search for teams
 vikunja_teams.list({
-  search: "frontend",
+  search: 'frontend',
   page: 1,
-  perPage: 10
-})
+  perPage: 10,
+});
 
 // Create a new team
 vikunja_teams.create({
-  name: "Frontend Team",
-  description: "Responsible for UI/UX development"
-})
+  name: 'Frontend Team',
+  description: 'Responsible for UI/UX development',
+});
 
 // Delete a team
-vikunja_teams.delete({ id: 1 })
+vikunja_teams.delete({ id: 1 });
 
 // Note: get, update, and members operations are not yet
 // implemented in the node-vikunja library
@@ -757,75 +811,77 @@ vikunja_teams.delete({ id: 1 })
 
 ```typescript
 // Get current user information
-vikunja_users.current()
+vikunja_users.current();
 
 // Search for users
 vikunja_users.search({
-  search: "john"
-})
+  search: 'john',
+});
 
 // Get current user settings
-vikunja_users.settings()
+vikunja_users.settings();
 
 // Update user settings
-vikunja_users.update-settings({
-  name: "John Doe",
-  language: "en",
-  timezone: "America/New_York",
-  weekStart: 1  // Monday
-})
+vikunja_users.update -
+  settings({
+    name: 'John Doe',
+    language: 'en',
+    timezone: 'America/New_York',
+    weekStart: 1, // Monday
+  });
 
 // Update notification preferences
-vikunja_users.update-settings({
-  emailRemindersEnabled: true,  // Enable email reminders for tasks
-  overdueTasksRemindersEnabled: true,  // Enable daily overdue task emails
-  overdueTasksRemindersTime: "09:00"  // Time to send overdue task summary
-})
+vikunja_users.update -
+  settings({
+    emailRemindersEnabled: true, // Enable email reminders for tasks
+    overdueTasksRemindersEnabled: true, // Enable daily overdue task emails
+    overdueTasksRemindersTime: '09:00', // Time to send overdue task summary
+  });
 ```
 
 ### Webhook Management Examples
 
 ```typescript
 // List all available webhook events
-vikunja_webhooks.list-events()
+vikunja_webhooks.list - events();
 // Returns: ["task.created", "task.updated", "task.deleted", "task.assigned", ...]
 
 // List webhooks for a project
-vikunja_webhooks.list({ projectId: 1 })
+vikunja_webhooks.list({ projectId: 1 });
 
 // Create a webhook for task events
 vikunja_webhooks.create({
   projectId: 1,
-  targetUrl: "https://example.com/webhook",
-  events: ["task.created", "task.updated"],
-  secret: "my-secret-key"  // Optional, for HMAC signing
-})
+  targetUrl: 'https://example.com/webhook',
+  events: ['task.created', 'task.updated'],
+  secret: 'my-secret-key', // Optional, for HMAC signing
+});
 
 // Create a webhook without secret
 vikunja_webhooks.create({
   projectId: 1,
-  targetUrl: "https://example.com/notifications",
-  events: ["task.assigned", "task.comment.created"]
-})
+  targetUrl: 'https://example.com/notifications',
+  events: ['task.assigned', 'task.comment.created'],
+});
 
 // Get a specific webhook
 vikunja_webhooks.get({
   projectId: 1,
-  webhookId: 123
-})
+  webhookId: 123,
+});
 
 // Update webhook events
 vikunja_webhooks.update({
   projectId: 1,
   webhookId: 123,
-  events: ["task.created", "task.updated", "task.deleted"]
-})
+  events: ['task.created', 'task.updated', 'task.deleted'],
+});
 
 // Delete a webhook
 vikunja_webhooks.delete({
   projectId: 1,
-  webhookId: 123
-})
+  webhookId: 123,
+});
 ```
 
 ### Advanced Filtering Examples
@@ -833,77 +889,77 @@ vikunja_webhooks.delete({
 ```typescript
 // Create a saved filter for high priority tasks
 vikunja_filters.create({
-  name: "High Priority Tasks",
-  description: "All undone tasks with priority 4 or 5",
-  filter: "done = false && priority >= 4",
-  isGlobal: true
-})
+  name: 'High Priority Tasks',
+  description: 'All undone tasks with priority 4 or 5',
+  filter: 'done = false && priority >= 4',
+  isGlobal: true,
+});
 
 // Alternative format using title and filters object
 vikunja_filters.create({
-  title: "🔥 High Priority Tasks",
-  description: "All tasks with priority 4 or 5 that are not completed",
+  title: '🔥 High Priority Tasks',
+  description: 'All tasks with priority 4 or 5 that are not completed',
   filters: {
-    filter_by: ["priority"],
-    filter_value: ["5"],
-    filter_comparator: [">="],
-    filter_concat: ""
+    filter_by: ['priority'],
+    filter_value: ['5'],
+    filter_comparator: ['>='],
+    filter_concat: '',
   },
-  is_favorite: true
-})
+  is_favorite: true,
+});
 
 // Create a filter with multiple conditions
 vikunja_filters.create({
-  title: "Urgent & Incomplete",
+  title: 'Urgent & Incomplete',
   filters: {
-    filter_by: ["priority", "done"],
-    filter_value: ["3", "false"],
-    filter_comparator: [">=", "="],
-    filter_concat: "&&"
-  }
-})
+    filter_by: ['priority', 'done'],
+    filter_value: ['3', 'false'],
+    filter_comparator: ['>=', '='],
+    filter_concat: '&&',
+  },
+});
 
 // Create a project-specific filter
 vikunja_filters.create({
   name: "This Week's Tasks",
-  filter: "dueDate >= now && dueDate < now+7d",
+  filter: 'dueDate >= now && dueDate < now+7d',
   projectId: 1,
-  isGlobal: false
-})
+  isGlobal: false,
+});
 
 // List all saved filters
-vikunja_filters.list()
+vikunja_filters.list();
 
 // List filters for a specific project
-vikunja_filters.list({ projectId: 1 })
+vikunja_filters.list({ projectId: 1 });
 
 // Apply a saved filter to task listing
 vikunja_tasks.list({
-  filterId: "550e8400-e29b-41d4-a716-446655440000"
-})
+  filterId: '550e8400-e29b-41d4-a716-446655440000',
+});
 
 // Build a filter programmatically
 vikunja_filters.build({
   conditions: [
-    { field: "done", operator: "=", value: false },
-    { field: "priority", operator: ">=", value: 3 },
-    { field: "assignees", operator: "in", value: ["user1", "user2"] }
+    { field: 'done', operator: '=', value: false },
+    { field: 'priority', operator: '>=', value: 3 },
+    { field: 'assignees', operator: 'in', value: ['user1', 'user2'] },
   ],
-  groupOperator: "&&"
-})
+  groupOperator: '&&',
+});
 // Returns: { filter: "(done = false && priority >= 3 && assignees in user1, user2)", valid: true }
 
 // Update an existing filter
 vikunja_filters.update({
-  id: "550e8400-e29b-41d4-a716-446655440000",
-  name: "Critical Tasks",
-  filter: "done = false && priority = 5"
-})
+  id: '550e8400-e29b-41d4-a716-446655440000',
+  name: 'Critical Tasks',
+  filter: 'done = false && priority = 5',
+});
 
 // Validate a filter string
 vikunja_filters.validate({
-  filter: "done = false && priority >= 3"
-})
+  filter: 'done = false && priority >= 3',
+});
 // Returns: { valid: true, errors: [] }
 ```
 
@@ -912,6 +968,7 @@ vikunja_filters.validate({
 The Vikunja filter syntax supports SQL-like queries with the following:
 
 **Fields:**
+
 - `done` - Task completion status (boolean)
 - `priority` - Task priority (1-5)
 - `percentDone` - Completion percentage (0-100)
@@ -922,11 +979,13 @@ The Vikunja filter syntax supports SQL-like queries with the following:
 - `updated` - Task update time
 
 **Operators:**
+
 - Comparison: `=`, `!=`, `>`, `>=`, `<`, `<=`
 - Pattern matching: `like` (uses `%` wildcard)
 - List matching: `in`, `not in`
 
 **Date Math:**
+
 - `now` - Current time
 - `now+24h` - 24 hours from now
 - `now-7d` - 7 days ago
@@ -934,6 +993,7 @@ The Vikunja filter syntax supports SQL-like queries with the following:
 - Supports: s (seconds), m (minutes), h (hours), d (days), w (weeks), M (months), y (years)
 
 **Examples:**
+
 - `priority = 4`
 - `dueDate < now`
 - `done = false && priority >= 3`
@@ -942,6 +1002,7 @@ The Vikunja filter syntax supports SQL-like queries with the following:
 - `title like "%urgent%"`
 
 **Smart Hybrid Filtering:** This MCP server implements an intelligent hybrid filtering approach that combines server-side and client-side filtering for optimal performance and reliability:
+
 - **Primary**: Attempts server-side filtering first for maximum performance
 - **Fallback**: Falls back to client-side filtering if server-side filtering fails or is unavailable
 - **Transparent**: Same filter syntax works regardless of which method is used
@@ -956,12 +1017,12 @@ All operations in the Vikunja MCP server follow a standardized response format f
 ```typescript
 interface StandardResponse {
   success: boolean;
-  operation: string;      // The operation performed (e.g., 'create', 'update', 'list')
-  message?: string;       // Human-readable description of the result
-  data?: any;            // The primary data returned (task, project, label, etc.)
+  operation: string; // The operation performed (e.g., 'create', 'update', 'list')
+  message?: string; // Human-readable description of the result
+  data?: any; // The primary data returned (task, project, label, etc.)
   metadata?: {
-    timestamp: string;    // ISO 8601 timestamp of the operation
-    [key: string]: any;  // Additional operation-specific metadata
+    timestamp: string; // ISO 8601 timestamp of the operation
+    [key: string]: any; // Additional operation-specific metadata
   };
 }
 ```
@@ -969,6 +1030,7 @@ interface StandardResponse {
 ### Response Examples
 
 **Success:**
+
 ```json
 {
   "success": true,
@@ -980,6 +1042,7 @@ interface StandardResponse {
 ```
 
 **Error:**
+
 ```json
 {
   "success": false,
@@ -990,6 +1053,7 @@ interface StandardResponse {
 ```
 
 This standardized format ensures:
+
 - **Consistency**: All tools return responses in the same structure
 - **Predictability**: Clients always know what fields to expect
 - **Debugging**: Metadata provides context for troubleshooting
@@ -998,12 +1062,16 @@ This standardized format ensures:
 ## Available Tools
 
 ### Authentication
+
 - `vikunja_auth` - Authentication management
-  - `connect` - Initialize connection with API token
-  - `status` - Check authentication status
-  - `refresh` - Refresh authentication token
+  - `connect` - Initialize connection with API token or JWT
+  - `status` - Check authentication status (shows auth type)
+  - `refresh` - Refresh JWT token (for when token expires)
+  - `login` - Login with username/password to obtain JWT
+  - `disconnect` - Disconnect and clean up resources
 
 ### Task Management ✅
+
 - `vikunja_tasks` - Task operations (fully implemented)
   - `list` - List tasks with filters
     - Filter by project or get all tasks
@@ -1037,6 +1105,7 @@ This standardized format ensures:
   - `attach` - Not implemented (file handling not available in MCP)
 
 ### Batch Import ✅
+
 - `vikunja_batch_import` - Import multiple tasks from CSV or JSON (fully implemented)
   - Required: projectId, format ('csv' or 'json'), data
   - Optional: skipErrors (continue on errors), dryRun (validate only)
@@ -1058,6 +1127,7 @@ This standardized format ensures:
     - Skip errors option for partial imports
 
 ### Project Management ✅
+
 - `vikunja_projects` - Project operations (fully implemented)
   - `list` - List all projects with filters
     - Support for pagination and search
@@ -1089,6 +1159,7 @@ This standardized format ensures:
     - `auth-share` - Authenticate to access a shared project
 
 ### Label Management ✅
+
 - `vikunja_labels` - Label operations (fully implemented)
   - `list` - List all labels with filters
     - Support for pagination and search
@@ -1111,6 +1182,7 @@ This standardized format ensures:
     - Returns detailed label information
 
 ### Project Templates ✅
+
 - `vikunja_templates` - Template operations (fully implemented)
   - `create` - Create a template from existing project
     - Required: projectId, name
@@ -1133,6 +1205,7 @@ This standardized format ensures:
     - Creates all tasks with labels from template
 
 ### Team Management ✅
+
 - `vikunja_teams` - Team operations (partially implemented)
   - `list` - List all teams with filters
     - Support for pagination and search
@@ -1145,6 +1218,7 @@ This standardized format ensures:
   - `members` - Not yet implemented in node-vikunja
 
 ### User Management ✅
+
 - `vikunja_users` - User operations (fully implemented) **[Requires JWT authentication]**
   - `current` - Get current authenticated user info
   - `search` - Search for users
@@ -1155,6 +1229,7 @@ This standardized format ensures:
   - **Note:** User operations require JWT authentication. When using API token authentication, these tools will not be available.
 
 ### Webhook Management ✅
+
 - `vikunja_webhooks` - Webhook operations for project automation (fully implemented)
   - `list-events` - Get all available webhook event types
   - `list` - List webhooks for a project
@@ -1170,10 +1245,11 @@ This standardized format ensures:
     - **Note**: Events are validated against available event types
   - `delete` - Delete a webhook
     - Required: projectId, webhookId
-  
+
   **Event Validation**: When creating or updating webhooks, the provided events are automatically validated against the list of available events from the API. Invalid events will result in a clear error message showing which events are invalid and listing all valid options. Valid events are cached for 5 minutes to improve performance.
 
 ### Filter Management ✅
+
 - `vikunja_filters` - Advanced filtering for tasks (fully implemented)
   - `list` - List saved filters
     - Optional: projectId (for project-specific filters), global flag
@@ -1189,13 +1265,14 @@ This standardized format ensures:
     - Required: conditions array
     - Optional: groupOperator (&&, ||)
   - `validate` - Validate a filter string
-  
+
   **Note:** Saved filters are currently stored in memory and will be lost when the MCP server restarts. For production use, consider implementing persistent storage.
 
 ### Data Export ✅
 
 > **⚠️ WARNING: Memory Usage**  
 > Export operations load entire project hierarchies into memory. For very large projects with thousands of tasks or deeply nested structures, this may consume significant memory. Consider exporting smaller projects individually.
+
 - `vikunja_export_project` - Export project data **[Requires JWT authentication]**
   - **Parameters:**
     - `projectId` (required) - ID of the project to export
@@ -1208,21 +1285,16 @@ This standardized format ensures:
     - Circular reference detection for nested projects
     - Export metadata includes timestamp and version
   - **Note:** Export operations require JWT authentication. When using API token authentication, this tool will not be available.
-  
 - `vikunja_request_user_export` - Request full user data export
   - **Parameters:**
     - `password` (required) - User password for security verification
   - **Returns:** Confirmation that export has been requested
   - **Note:** You will receive an email when the export is ready
-  
 - `vikunja_download_user_export` - Download previously requested user data export
   - **Parameters:**
     - `password` (required) - User password for security verification
   - **Returns:** Complete user data export
   - **Note:** Export must be requested first via `vikunja_request_user_export`
-
-
-
 
 ## Known Limitations
 
@@ -1233,16 +1305,12 @@ This standardized format ensures:
    - Cannot delete teams
    - Cannot manage team members
 3. **Pagination**: Some endpoints may not fully support pagination parameters due to API limitations
-4. **Authentication Issues**: Some Vikunja API endpoints have known authentication issues:
-   - **User endpoints**: May fail with token errors even with valid tokens (known Vikunja API limitation)
-   - **Bulk operations**: May have authentication issues with certain Vikunja API versions
-   - **Label operations**: May fail with authentication errors on some server configurations
-   - **Assignee operations**: May fail with authentication errors when creating/updating tasks with assignees
-   - The server provides detailed error messages when these issues occur, suggesting workarounds
+4. **JWT Expiration**: JWT tokens expire (~24 hours). Use `vikunja_auth.refresh()` to renew or restart the container to auto-login again.
 
 ## Security & Performance Features
 
 ### Security Enhancements
+
 - **Zod Schema Validation**: Enterprise-grade input validation with comprehensive type checking
 - **DoS Protection**: Input sanitization, length limits, and character allowlisting
 - **Credential Protection**: Automatic masking of sensitive tokens and URLs in logs and error messages
@@ -1252,6 +1320,7 @@ This standardized format ensures:
 - **Error Handling**: Structured error responses that avoid exposing sensitive system information
 
 ### Performance Optimizations
+
 - **Hybrid Filtering**: Smart server-side filtering with client-side fallback for optimal performance
 - **Connection Pooling**: Efficient session management with automatic client caching
 - **Request Batching**: Optimized bulk operations with efficient diff-based updates
@@ -1267,6 +1336,7 @@ This standardized format ensures:
 The server supports various configuration options through environment variables:
 
 #### Basic Configuration
+
 ```bash
 # Vikunja instance URL (required)
 VIKUNJA_URL=https://your-vikunja-instance.com/api/v1
@@ -1282,6 +1352,7 @@ LOG_LEVEL=debug
 ```
 
 #### Security & Performance Configuration
+
 ```bash
 # Rate limiting (default: enabled)
 RATE_LIMIT_ENABLED=true
@@ -1320,10 +1391,21 @@ For detailed rate limiting configuration, see [`docs/RATE_LIMITING.md`](docs/RAT
 - [x] ✅ **Test coverage** - 98.91% function coverage achieved
 - [x] ✅ **Architecture simplification** - 90% code reduction with enhanced maintainability
 - [x] ✅ **Production-ready resilience** - Opossum circuit breaker and Zod validation
+- [x] ✅ **JWT Auto-Login** - Automatic JWT authentication from credentials
+- [x] ✅ **Token Refresh** - Refresh expired JWT tokens without restart
 - [ ] Add webhook subscriptions for real-time updates
 - [ ] Add caching for frequently accessed data
 - [ ] Add integration tests with real Vikunja instance
 - [ ] Implement persistent storage for saved filters (optional - in-memory works well)
+
+## Documentation
+
+Additional documentation available in [`docs/`](docs/):
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - System architecture
+- [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) - Configuration options
+- [`docs/AUTH_FIX_PRD.md`](docs/AUTH_FIX_PRD.md) - Authentication fix details
+- [`docs/TECH_DEBT.md`](docs/TECH_DEBT.md) - Technical debt tracking
 
 ## Contributing
 
