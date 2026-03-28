@@ -5,13 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Essential Development Commands
 
 ### Pre-Commit Requirements (ALL must pass)
+
 ```bash
 npm run lint           # ESLint validation
-npm run test:coverage  # Jest with 90%+ branches, 95%+ lines coverage requirement  
+npm run test:coverage  # Jest with 90%+ branches, 95%+ lines coverage requirement
 npm run typecheck      # TypeScript compilation check
 ```
 
 ### Development Workflow
+
 ```bash
 npm run build          # TypeScript compilation to dist/
 npm run dev            # Watch mode development server with tsx
@@ -24,6 +26,7 @@ jest tests/tools/tasks-filters.test.ts      # Test specific functionality
 ```
 
 ### Build and Release
+
 ```bash
 npm run format         # Prettier formatting for src/ and tests/
 npm run prepare        # Pre-publish build step
@@ -33,6 +36,7 @@ npm run version:patch  # Bump patch version
 ## Architecture Overview
 
 ### MCP Server Pattern
+
 This is a **Model Context Protocol (MCP) server** that exposes Vikunja task management operations as tools for AI assistants. The architecture follows a modular design with dependency injection:
 
 - **Entry Point**: `src/index.ts` - Initializes McpServer with stdio transport
@@ -41,14 +45,20 @@ This is a **Model Context Protocol (MCP) server** that exposes Vikunja task mana
 - **Auth Manager**: Centralized authentication with JWT/API token auto-detection
 
 ### Tool Design Pattern
+
 Each Vikunja entity follows a consistent **subcommand-based pattern**:
+
 ```typescript
-server.tool('vikunja_tasks', {
-  subcommand: z.enum(['create', 'get', 'update', 'delete', 'list']),
-  // ... Zod validation schema
-}, async (args) => {
-  // Route to specific operation handlers
-})
+server.tool(
+  'vikunja_tasks',
+  {
+    subcommand: z.enum(['create', 'get', 'update', 'delete', 'list']),
+    // ... Zod validation schema
+  },
+  async (args) => {
+    // Route to specific operation handlers
+  },
+);
 ```
 
 ### Critical Architecture Decisions (Post-Refactoring v0.2.0)
@@ -100,11 +110,12 @@ server.tool('vikunja_tasks', {
 ## Testing Philosophy & Requirements
 
 ### Strict Coverage Thresholds (ACHIEVED)
+
 ```json
 "coverageThreshold": {
   "global": {
     "branches": 90,    // ✅ Current: 90%+
-    "functions": 98,   // ✅ Current: 98.91% 
+    "functions": 98,   // ✅ Current: 98.91%
     "lines": 95,       // ✅ Current: 95%+
     "statements": 95   // ✅ Current: 95%+
   }
@@ -114,9 +125,11 @@ server.tool('vikunja_tasks', {
 **Achievement**: All coverage thresholds have been met and are maintained through comprehensive test suites covering security scenarios, edge cases, and performance benchmarks.
 
 ### Defensive Programming Rule
+
 **If code cannot be tested, it must be removed.** Every defensive pattern (like `|| ''` fallbacks) must have corresponding test cases that trigger those code paths.
 
 Example pattern:
+
 ```typescript
 // This defensive code MUST be testable
 const message = error.message.toLowerCase() || '';
@@ -124,15 +137,17 @@ const message = error.message.toLowerCase() || '';
 ```
 
 ### Test Organization
+
 ```
 tests/
 ├── tools/           # Mirror src/tools structure exactly
 ├── auth/           # Authentication edge cases
-├── utils/          # Utility function coverage  
+├── utils/          # Utility function coverage
 └── types/          # Type definition validation
 ```
 
 ### Mock Strategy
+
 - **External Dependencies**: All node-vikunja API calls mocked
 - **Edge Cases**: Test malformed API responses, auth failures, network errors
 - **Race Conditions**: Dedicated test files for concurrent operations
@@ -140,6 +155,7 @@ tests/
 ### Integration Testing
 
 Run MCP integration tests against real Vikunja:
+
 ```bash
 npm run test:mcp
 ```
@@ -149,6 +165,7 @@ For manual testing with Claude, see `docs/MCP-TEST-CHECKLIST.md`.
 ## Key Dependencies & Integration
 
 ### Core Dependencies
+
 - **@modelcontextprotocol/sdk**: MCP server framework and transport layer
 - **node-vikunja**: Vikunja API client (dynamically imported for testability)
 - **zod**: Runtime validation for MCP tool arguments and responses
@@ -157,12 +174,14 @@ For manual testing with Claude, see `docs/MCP-TEST-CHECKLIST.md`.
 - **express-rate-limit**: Configurable DoS protection and rate limiting
 
 ### Authentication Strategy
+
 - **API Token** (`tk_*`): Standard auth, excludes user-specific endpoints
 - **JWT Token** (`eyJ*`): Full access including user management and export
 - **Auto-Detection**: Token format determines authentication type and available tools
 - **Security Layer**: Credential masking in logs, secure session management with `src/auth/AuthManager.ts`
 
 ### Security Architecture
+
 - **Zod Validation**: `src/utils/filters-zod.ts` - Enterprise-grade input validation with DoS protection
 - **Rate Limiting**: `src/middleware/rate-limiting.ts` - Configurable DoS protection
 - **Input Validation**: `src/utils/security.ts` - Sanitization and allowlist validation
@@ -170,6 +189,7 @@ For manual testing with Claude, see `docs/MCP-TEST-CHECKLIST.md`.
 - **Thread Safety**: `src/storage/SimpleFilterStorage.ts` - Concurrent access protection with AsyncMutex
 
 ### Error Handling Architecture
+
 - **Centralized Error Utilities**: `src/utils/error-handler.ts` provides standardized error processing
 - **MCPError Types**: Structured errors with codes and messages
 - **Circuit Breaker**: Production-ready retry logic with opossum integration in `src/utils/retry.ts`
@@ -179,6 +199,7 @@ For manual testing with Claude, see `docs/MCP-TEST-CHECKLIST.md`.
 ## Development Workflow Requirements
 
 ### Git Workflow
+
 ```bash
 git checkout -b feature/implement-new-tool
 # Commit early and often during development
@@ -192,6 +213,7 @@ git push origin feature/implement-new-tool
 ```
 
 ### Adding New Tools
+
 1. Create tool module in `src/tools/[entity]/`
 2. Implement with subcommand pattern and Zod validation
 3. Register in `src/tools/index.ts` with conditional logic if needed
@@ -199,12 +221,13 @@ git push origin feature/implement-new-tool
 5. Update README.md with tool documentation
 
 ### Error Handling Pattern
+
 ```typescript
 try {
   // Vikunja API operation
 } catch (error) {
   if (error instanceof MCPError) {
-    throw error;  // Re-throw MCP errors
+    throw error; // Re-throw MCP errors
   }
   throw new MCPError(ErrorCode.API_ERROR, error.message);
 }
@@ -212,7 +235,7 @@ try {
 
 ## Known Architectural Constraints
 
-1. **Vikunja API Limitations**: 
+1. **Vikunja API Limitations**:
    - Hybrid filtering implemented to handle server-side inconsistencies
    - Team operations incomplete in node-vikunja library
    - Some user endpoints have authentication issues
@@ -242,3 +265,15 @@ try {
 - **Owner**: democratize-technology
 - **Branch Strategy**: Feature branches required, no direct main commits
 - **PR Requirements**: Documentation updates, test coverage, passing checks
+
+## Documentation
+
+All technical documentation is in `docs/`:
+
+- `docs/ARCHITECTURE.md` - System architecture
+- `docs/CONFIGURATION.md` - Configuration options
+- `docs/TECH_DEBT.md` - Technical debt tracking
+- `docs/TEST_FAILURES.md` - Known test failures
+- `docs/AUTH_FIX_PRD.md` - Authentication fix documentation
+
+For SDD artifacts, see `openspec/changes/`.
