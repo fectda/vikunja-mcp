@@ -9,6 +9,7 @@ import { getClientFromContext } from '../../../client';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from '../constants';
+import { logger } from '../../../utils/logger';
 
 /**
  * Service for managing task assignee operations
@@ -24,13 +25,22 @@ export const AssigneeOperationsService = {
     try {
       // Assign each user individually (bulk endpoint doesn't work in Vikunja)
       for (const userId of assigneeIds) {
-        await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
-          ...RETRY_CONFIG.AUTH_ERRORS,
-          shouldRetry: (error) => isAuthenticationError(error),
-        });
+        try {
+          await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
+            ...RETRY_CONFIG.AUTH_ERRORS,
+            shouldRetry: (error) => isAuthenticationError(error),
+          });
+        } catch (userError) {
+          // Log but don't fail - user might already be assigned or other non-critical issue
+          logger.warn('Failed to assign user to task', {
+            taskId,
+            userId,
+            error: userError instanceof Error ? userError.message : String(userError),
+          });
+        }
       }
     } catch (assigneeError) {
-      // Check if it's an auth error after retries
+      // Only throw if it's a critical error
       if (isAuthenticationError(assigneeError)) {
         throw new MCPError(
           ErrorCode.API_ERROR,
