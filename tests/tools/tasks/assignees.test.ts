@@ -19,6 +19,7 @@ describe('Assignee operations', () => {
   const mockClient = {
     tasks: {
       bulkAssignUsersToTask: jest.fn(),
+      assignUserToTask: jest.fn(), // Added for individual user assignment
       removeUserFromTask: jest.fn(),
       getTask: jest.fn(),
     },
@@ -36,9 +37,12 @@ describe('Assignee operations', () => {
       const mockTask = {
         id: 123,
         title: 'Test Task',
-        assignees: [{ id: 1, name: 'User 1' }, { id: 2, name: 'User 2' }],
+        assignees: [
+          { id: 1, name: 'User 1' },
+          { id: 2, name: 'User 2' },
+        ],
       };
-      
+
       mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
@@ -54,44 +58,44 @@ describe('Assignee operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('assign');
       expect(markdown).toContain('Users assigned to task successfully');
     });
 
     it('should throw error when task id is missing', async () => {
       await expect(assignUsers({ assignees: [1, 2] })).rejects.toThrow(
-        'Task id is required for assign operation'
+        'Task id is required for assign operation',
       );
     });
 
     it('should throw error when task id is zero', async () => {
       await expect(assignUsers({ id: 0, assignees: [1, 2] })).rejects.toThrow(
-        'Task id is required for assign operation'
+        'Task id is required for assign operation',
       );
     });
 
     it('should throw error when task id is negative', async () => {
       await expect(assignUsers({ id: -1, assignees: [1, 2] })).rejects.toThrow(
-        'id must be a positive integer'
+        'id must be a positive integer',
       );
     });
 
     it('should throw error when assignees array is missing', async () => {
       await expect(assignUsers({ id: 123 })).rejects.toThrow(
-        'At least one assignee (user id) is required'
+        'At least one assignee (user id) is required',
       );
     });
 
     it('should throw error when assignees array is empty', async () => {
       await expect(assignUsers({ id: 123, assignees: [] })).rejects.toThrow(
-        'At least one assignee (user id) is required'
+        'At least one assignee (user id) is required',
       );
     });
 
     it('should throw error when assignee id is invalid', async () => {
       await expect(assignUsers({ id: 123, assignees: [1, -2] })).rejects.toThrow(
-        'assignee ID must be a positive integer'
+        'assignee ID must be a positive integer',
       );
     });
 
@@ -101,7 +105,7 @@ describe('Assignee operations', () => {
       (withRetry as jest.Mock).mockRejectedValue(authError);
 
       await expect(assignUsers({ id: 123, assignees: [1, 2] })).rejects.toThrow(
-        'Failed to assign users to task: Assignee operations may have authentication issues with certain Vikunja API versions. This is a known limitation that prevents assigning users to tasks. (Retried 3 times)'
+        'Failed to assign users to task: Assignee operations may have authentication issues with certain Vikunja API versions. This is a known limitation that prevents assigning users to tasks. (Retried 3 times)',
       );
     });
 
@@ -110,7 +114,7 @@ describe('Assignee operations', () => {
       (withRetry as jest.Mock).mockRejectedValue(apiError);
 
       await expect(assignUsers({ id: 123, assignees: [1, 2] })).rejects.toThrow(
-        'Failed to assign users to task: API Error'
+        'Failed to assign users to task: API Error',
       );
     });
 
@@ -119,7 +123,7 @@ describe('Assignee operations', () => {
       (withRetry as jest.Mock).mockRejectedValue(unknownError);
 
       await expect(assignUsers({ id: 123, assignees: [1, 2] })).rejects.toThrow(
-        'Failed to assign users to task: [object Object]'
+        'Failed to assign users to task: [object Object]',
       );
     });
 
@@ -128,7 +132,7 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockRejectedValue(mcpError);
 
       await expect(assignUsers({ id: 123, assignees: [1, 2] })).rejects.toThrow(
-        'Failed to assign users to task: Validation failed'
+        'Failed to assign users to task: Validation failed',
       );
     });
   });
@@ -140,7 +144,7 @@ describe('Assignee operations', () => {
         title: 'Test Task',
         assignees: [],
       };
-      
+
       mockClient.tasks.removeUserFromTask.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
@@ -156,32 +160,32 @@ describe('Assignee operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('unassign');
       expect(markdown).toContain('Users removed from task successfully');
     });
 
     it('should throw error when task id is missing', async () => {
       await expect(unassignUsers({ assignees: [1, 2] })).rejects.toThrow(
-        'Task id is required for unassign operation'
+        'Task id is required for unassign operation',
       );
     });
 
     it('should throw error when task id is zero', async () => {
       await expect(unassignUsers({ id: 0, assignees: [1, 2] })).rejects.toThrow(
-        'Task id is required for unassign operation'
+        'Task id is required for unassign operation',
       );
     });
 
     it('should throw error when assignees array is missing', async () => {
       await expect(unassignUsers({ id: 123 })).rejects.toThrow(
-        'At least one assignee (user id) is required to unassign'
+        'At least one assignee (user id) is required to unassign',
       );
     });
 
     it('should throw error when assignees array is empty', async () => {
       await expect(unassignUsers({ id: 123, assignees: [] })).rejects.toThrow(
-        'At least one assignee (user id) is required to unassign'
+        'At least one assignee (user id) is required to unassign',
       );
     });
 
@@ -191,7 +195,7 @@ describe('Assignee operations', () => {
       (withRetry as jest.Mock).mockRejectedValue(authError);
 
       await expect(unassignUsers({ id: 123, assignees: [1] })).rejects.toThrow(
-        'Failed to remove users from task: Assignee removal operations may have authentication issues with certain Vikunja API versions. This is a known limitation that prevents removing users from tasks. (Retried 3 times)'
+        'Failed to remove users from task: Assignee removal operations may have authentication issues with certain Vikunja API versions. This is a known limitation that prevents removing users from tasks. (Retried 3 times)',
       );
     });
 
@@ -200,7 +204,7 @@ describe('Assignee operations', () => {
       (withRetry as jest.Mock).mockRejectedValue(apiError);
 
       await expect(unassignUsers({ id: 123, assignees: [1] })).rejects.toThrow(
-        'Failed to remove users from task: API Error'
+        'Failed to remove users from task: API Error',
       );
     });
 
@@ -211,7 +215,7 @@ describe('Assignee operations', () => {
         .mockRejectedValueOnce(apiError); // Second user fails
 
       await expect(unassignUsers({ id: 123, assignees: [1, 2] })).rejects.toThrow(
-        'Failed to remove users from task: User not found'
+        'Failed to remove users from task: User not found',
       );
 
       // Verify that at least the first removal was attempted
@@ -229,7 +233,7 @@ describe('Assignee operations', () => {
           { id: 2, name: 'User 2' },
         ],
       };
-      
+
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listAssignees({ id: 123 });
@@ -238,7 +242,7 @@ describe('Assignee operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('get');
       expect(markdown).toContain('Task has 2 assignee(s)');
     });
@@ -249,7 +253,7 @@ describe('Assignee operations', () => {
         title: 'Test Task',
         assignees: [],
       };
-      
+
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listAssignees({ id: 123 });
@@ -264,7 +268,7 @@ describe('Assignee operations', () => {
         title: 'Test Task',
         // assignees is undefined
       };
-      
+
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listAssignees({ id: 123 });
@@ -275,20 +279,16 @@ describe('Assignee operations', () => {
 
     it('should throw error when task id is undefined', async () => {
       await expect(listAssignees({})).rejects.toThrow(
-        'Task id is required for list-assignees operation'
+        'Task id is required for list-assignees operation',
       );
     });
 
     it('should handle zero task id', async () => {
-      await expect(listAssignees({ id: 0 })).rejects.toThrow(
-        'id must be a positive integer'
-      );
+      await expect(listAssignees({ id: 0 })).rejects.toThrow('id must be a positive integer');
     });
 
     it('should handle negative task id', async () => {
-      await expect(listAssignees({ id: -1 })).rejects.toThrow(
-        'id must be a positive integer'
-      );
+      await expect(listAssignees({ id: -1 })).rejects.toThrow('id must be a positive integer');
     });
 
     it('should handle API errors', async () => {
@@ -296,7 +296,7 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockRejectedValue(apiError);
 
       await expect(listAssignees({ id: 123 })).rejects.toThrow(
-        'Failed to list task assignees: Task not found'
+        'Failed to list task assignees: Task not found',
       );
     });
 
@@ -312,7 +312,7 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockRejectedValue(unknownError);
 
       await expect(listAssignees({ id: 123 })).rejects.toThrow(
-        'Failed to list task assignees: [object Object]'
+        'Failed to list task assignees: [object Object]',
       );
     });
 
@@ -322,7 +322,7 @@ describe('Assignee operations', () => {
         title: 'Test Task',
         assignees: [{ id: 1, name: 'User 1' }],
       };
-      
+
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listAssignees({ id: 123 });
@@ -340,17 +340,17 @@ describe('Assignee operations', () => {
         title: 'Test Task',
         assignees: [],
       };
-      
+
       const assignedTask = {
         id: 123,
         title: 'Test Task',
         assignees: [{ id: 1, name: 'User 1' }],
       };
-      
+
       // Mock assignment
       mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue(assignedTask);
-      
+
       const assignResult = await assignUsers({ id: 123, assignees: [1] });
 
       const assignMarkdown = assignResult.content[0].text;
@@ -367,10 +367,12 @@ describe('Assignee operations', () => {
     });
 
     it('should handle multiple assignees with mixed validation errors', async () => {
-      await expect(assignUsers({ 
-        id: 123, 
-        assignees: [1, 0, -1] // Mix of valid and invalid IDs
-      })).rejects.toThrow('assignee ID must be a positive integer');
+      await expect(
+        assignUsers({
+          id: 123,
+          assignees: [1, 0, -1], // Mix of valid and invalid IDs
+        }),
+      ).rejects.toThrow('assignee ID must be a positive integer');
     });
   });
 });
