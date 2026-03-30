@@ -4,10 +4,20 @@
  */
 
 import type { Project, ProjectListParams } from 'node-vikunja';
-import { MCPError, ErrorCode, type CreateProjectRequest, type UpdateProjectRequest } from '../../types';
+import {
+  MCPError,
+  ErrorCode,
+  type CreateProjectRequest,
+  type UpdateProjectRequest,
+} from '../../types';
 import { getClientFromContext } from '../../client';
 import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
-import { validateId, validateHexColor, validateProjectData, calculateProjectDepth } from './validation';
+import {
+  validateId,
+  validateHexColor,
+  validateProjectData,
+  calculateProjectDepth,
+} from './validation';
 import { createProjectResponse, createProjectListResponse } from './response-formatter';
 import { formatAorpAsMarkdown } from '../../utils/response-factory';
 
@@ -24,7 +34,6 @@ interface ApiProjectResponse {
   data?: Project[];
   total?: number;
 }
-
 
 /**
  * Arguments for listing projects
@@ -101,10 +110,16 @@ export interface ArchiveProjectArgs {
 /**
  * Lists projects with pagination and filtering
  */
-export async function listProjects(
-  args: ListProjectsArgs
-): Promise<McpResponse> {
-  const { page = 1, perPage = 50, search, isArchived, verbosity, useOptimizedFormat, useAorp } = args;
+export async function listProjects(args: ListProjectsArgs): Promise<McpResponse> {
+  const {
+    page = 1,
+    perPage = 50,
+    search,
+    isArchived,
+    verbosity,
+    useOptimizedFormat,
+    useAorp,
+  } = args;
 
   try {
     const client = await getClientFromContext();
@@ -149,7 +164,7 @@ export async function listProjects(
       page,
       Math.ceil(total / perPage),
       total,
-      options
+      options,
     );
 
     return {
@@ -157,8 +172,8 @@ export async function listProjects(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -171,9 +186,7 @@ export async function listProjects(
 /**
  * Gets a single project by ID
  */
-export async function getProject(
-  args: GetProjectArgs
-): Promise<McpResponse> {
+export async function getProject(args: GetProjectArgs): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -189,7 +202,7 @@ export async function getProject(
       {},
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -197,23 +210,26 @@ export async function getProject(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(error, 'Failed to get project', id, `Project with ID ${id} not found`);
+    throw handleStatusCodeError(
+      error,
+      'Failed to get project',
+      id,
+      `Project with ID ${id} not found`,
+    );
   }
 }
 
 /**
  * Creates a new project
  */
-export async function createProject(
-  args: CreateProjectArgs
-): Promise<McpResponse> {
+export async function createProject(args: CreateProjectArgs): Promise<McpResponse> {
   const {
     title,
     description,
@@ -222,7 +238,7 @@ export async function createProject(
     hexColor,
     verbosity,
     useOptimizedFormat,
-    useAorp
+    useAorp,
   } = args;
 
   try {
@@ -251,7 +267,9 @@ export async function createProject(
       try {
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
         const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
-        allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
+        allProjects =
+          allProjectsApiData.data ||
+          (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
       } catch {
         // Continue with validation if we can't get all projects
       }
@@ -261,11 +279,9 @@ export async function createProject(
       // Check depth constraints
       if (allProjects.length > 0) {
         const depth = calculateProjectDepth(parentProjectId, allProjects);
-        if (depth >= 10) { // MAX_PROJECT_DEPTH
-          throw new MCPError(
-            ErrorCode.VALIDATION_ERROR,
-            'Maximum allowed depth is 10 levels'
-          );
+        if (depth >= 10) {
+          // MAX_PROJECT_DEPTH
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Maximum allowed depth is 10 levels');
         }
       }
     }
@@ -306,7 +322,7 @@ export async function createProject(
       {},
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -314,8 +330,8 @@ export async function createProject(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -328,9 +344,7 @@ export async function createProject(
 /**
  * Updates an existing project
  */
-export async function updateProject(
-  args: UpdateProjectArgs
-): Promise<McpResponse> {
+export async function updateProject(args: UpdateProjectArgs): Promise<McpResponse> {
   const {
     id,
     title,
@@ -340,20 +354,19 @@ export async function updateProject(
     hexColor,
     verbosity,
     useOptimizedFormat,
-    useAorp
+    useAorp,
   } = args;
 
   try {
     validateId(id, 'project id');
 
     // Check if at least one field to update is provided
-    const hasUpdateFields = (
+    const hasUpdateFields =
       title !== undefined ||
       description !== undefined ||
       parentProjectId !== undefined ||
       isArchived !== undefined ||
-      hexColor !== undefined
-    );
+      hexColor !== undefined;
 
     if (!hasUpdateFields) {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'No fields to update provided');
@@ -375,14 +388,17 @@ export async function updateProject(
       try {
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
         const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
-        allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
+        allProjects =
+          allProjectsApiData.data ||
+          (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
       } catch {
         // Continue if we can't get all projects
       }
     }
 
     // Validate update data, filter out undefined values for exactOptionalPropertyTypes
-    const validationUpdateData: { title?: string; hexColor?: string; parentProjectId?: number } = {};
+    const validationUpdateData: { title?: string; hexColor?: string; parentProjectId?: number } =
+      {};
 
     if (title !== undefined) {
       validationUpdateData.title = title;
@@ -392,7 +408,11 @@ export async function updateProject(
       validationUpdateData.hexColor = hexColor;
     }
 
-    const resolvedParentProjectId = parentProjectId ?? (currentProject && typeof currentProject.parent_project_id === 'number' ? currentProject.parent_project_id : undefined);
+    const resolvedParentProjectId =
+      parentProjectId ??
+      (currentProject && typeof currentProject.parent_project_id === 'number'
+        ? currentProject.parent_project_id
+        : undefined);
     if (resolvedParentProjectId !== undefined) {
       validationUpdateData.parentProjectId = resolvedParentProjectId;
     }
@@ -402,11 +422,9 @@ export async function updateProject(
     // Check depth constraints if parentProjectId is being updated
     if (parentProjectId !== undefined && allProjects.length > 0) {
       const depth = calculateProjectDepth(parentProjectId, allProjects);
-      if (depth >= 10) { // MAX_PROJECT_DEPTH
-        throw new MCPError(
-          ErrorCode.VALIDATION_ERROR,
-          'Maximum allowed depth is 10 levels'
-        );
+      if (depth >= 10) {
+        // MAX_PROJECT_DEPTH
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Maximum allowed depth is 10 levels');
       }
     }
 
@@ -419,8 +437,8 @@ export async function updateProject(
     if (description !== undefined) {
       updateData.description = description.trim();
     }
-    if (parentProjectId !== undefined) {
-      updateData.parent_project_id = parentProjectId;
+    if (resolvedParentProjectId !== undefined) {
+      updateData.parent_project_id = resolvedParentProjectId;
     }
     if (isArchived !== undefined) {
       updateData.is_archived = isArchived;
@@ -438,7 +456,7 @@ export async function updateProject(
       {},
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -446,8 +464,8 @@ export async function updateProject(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -457,7 +475,7 @@ export async function updateProject(
       error,
       'Failed to update project',
       id,
-      `Project with ID ${id} not found`
+      `Project with ID ${id} not found`,
     );
   }
 }
@@ -465,9 +483,7 @@ export async function updateProject(
 /**
  * Deletes a project
  */
-export async function deleteProject(
-  args: DeleteProjectArgs
-): Promise<McpResponse> {
+export async function deleteProject(args: DeleteProjectArgs): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -487,7 +503,7 @@ export async function deleteProject(
       {},
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -495,8 +511,8 @@ export async function deleteProject(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -506,7 +522,7 @@ export async function deleteProject(
       error,
       'Failed to delete project',
       id,
-      `Project with ID ${id} not found`
+      `Project with ID ${id} not found`,
     );
   }
 }
@@ -514,9 +530,7 @@ export async function deleteProject(
 /**
  * Archives a project
  */
-export async function archiveProject(
-  args: ArchiveProjectArgs
-): Promise<McpResponse> {
+export async function archiveProject(args: ArchiveProjectArgs): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -536,7 +550,7 @@ export async function archiveProject(
         {},
         verbosity,
         useOptimizedFormat,
-        useAorp
+        useAorp,
       );
 
       return {
@@ -544,15 +558,15 @@ export async function archiveProject(
           {
             type: 'text' as const,
             text: formatAorpAsMarkdown(result.response),
-          }
-        ]
+          },
+        ],
       };
     }
 
     // Archive the project
     const project = await client.projects.updateProject(id, {
       title: currentProject.title,
-      is_archived: true
+      is_archived: true,
     } as Project);
 
     const result = createProjectResponse(
@@ -562,7 +576,7 @@ export async function archiveProject(
       {},
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -570,8 +584,8 @@ export async function archiveProject(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -581,7 +595,7 @@ export async function archiveProject(
       error,
       'Failed to archive project',
       id,
-      `Project with ID ${id} not found`
+      `Project with ID ${id} not found`,
     );
   }
 }
@@ -589,9 +603,7 @@ export async function archiveProject(
 /**
  * Unarchives a project
  */
-export async function unarchiveProject(
-  args: ArchiveProjectArgs
-): Promise<McpResponse> {
+export async function unarchiveProject(args: ArchiveProjectArgs): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -611,7 +623,7 @@ export async function unarchiveProject(
         {},
         verbosity,
         useOptimizedFormat,
-        useAorp
+        useAorp,
       );
 
       return {
@@ -619,15 +631,15 @@ export async function unarchiveProject(
           {
             type: 'text' as const,
             text: formatAorpAsMarkdown(result.response),
-          }
-        ]
+          },
+        ],
       };
     }
 
     // Unarchive the project
     const project = await client.projects.updateProject(id, {
       title: currentProject.title,
-      is_archived: false
+      is_archived: false,
     } as Project);
 
     const result = createProjectResponse(
@@ -637,7 +649,7 @@ export async function unarchiveProject(
       {},
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -645,8 +657,8 @@ export async function unarchiveProject(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -656,7 +668,7 @@ export async function unarchiveProject(
       error,
       'Failed to unarchive project',
       id,
-      `Project with ID ${id} not found`
+      `Project with ID ${id} not found`,
     );
   }
 }
