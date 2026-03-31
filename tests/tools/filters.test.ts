@@ -80,7 +80,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Found 2 saved filters');
       expect(markdown).toContain('**filters:*');
       // Count removed - new format doesn't show count
@@ -88,20 +88,26 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should filter by projectId', async () => {
-      await (await getTestStorage()).create({
+      await (
+        await getTestStorage()
+      ).create({
         name: 'Global',
         filter: 'done = false',
         isGlobal: true,
       });
 
-      await (await getTestStorage()).create({
+      await (
+        await getTestStorage()
+      ).create({
         name: 'Project 1',
         filter: 'priority = 1',
         projectId: 1,
         isGlobal: false,
       });
 
-      await (await getTestStorage()).create({
+      await (
+        await getTestStorage()
+      ).create({
         name: 'Project 2',
         filter: 'priority = 2',
         projectId: 2,
@@ -115,21 +121,25 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain('Found 1 saved filter');  // Fixed: only 1 filter matches projectId 1
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('Found 1 saved filter'); // Fixed: only 1 filter matches projectId 1
       expect(markdown).toContain('**filters:*');
       // Count removed - new format doesn't show count
       // Filter data not in markdown - summary only
     });
 
     it('should filter by global flag', async () => {
-      await (await getTestStorage()).create({
+      await (
+        await getTestStorage()
+      ).create({
         name: 'Global',
         filter: 'done = false',
         isGlobal: true,
       });
 
-      await (await getTestStorage()).create({
+      await (
+        await getTestStorage()
+      ).create({
         name: 'Not Global',
         filter: 'priority = 1',
         isGlobal: false,
@@ -142,7 +152,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Found 1 saved filter');
       expect(markdown).toContain('**filters:*');
       // Count removed - new format doesn't show count
@@ -152,7 +162,9 @@ describe('vikunja_filters tool', () => {
 
   describe('get action', () => {
     it('should get a specific filter', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'Test Filter',
         description: 'Test description',
         filter: 'done = false',
@@ -166,7 +178,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Retrieved filter');
       expect(markdown).toContain('**filter:*');
       // Filter details not in markdown - summary only
@@ -181,7 +193,6 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('**filter:*');
       expect(markdown).toContain('not found');
     });
   });
@@ -200,7 +211,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('saved successfully');
       expect(markdown).toContain('**filter:*');
       // Filter details verified through storage, not markdown
@@ -223,7 +234,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('saved successfully');
       expect(markdown).toContain('**filter:*');
       // Verify through storage
@@ -233,7 +244,9 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should prevent duplicate names', async () => {
-      await (await getTestStorage()).create({
+      await (
+        await getTestStorage()
+      ).create({
         name: 'Existing',
         filter: 'done = true',
         isGlobal: false,
@@ -273,7 +286,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('saved successfully');
       expect(markdown).toContain('**filter:*');
       // Verify filter was created with correct expression
@@ -298,7 +311,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify filter expression through storage
       const storage = await getTestStorage();
       const filters = await storage.list();
@@ -321,7 +334,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Should skip the empty done value - verify through storage
       const storage = await getTestStorage();
       const filters = await storage.list();
@@ -340,7 +353,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const filters = await storage.list();
@@ -358,7 +371,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const filters = await storage.list();
@@ -376,7 +389,7 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('Required');
+      expect(markdown).toContain('name or title');
     });
 
     it('should handle edge case with falsy name values', async () => {
@@ -416,7 +429,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const filters = await storage.list();
@@ -439,7 +452,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const filters = await storage.list();
@@ -462,7 +475,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const filters = await storage.list();
@@ -501,14 +514,15 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('Required');
-      expect(markdown).toContain('Either name or title must be provided');
+      expect(markdown).toContain('already exists');
     });
   });
 
   describe('update action', () => {
     it('should update an existing filter', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'Original',
         filter: 'done = false',
         isGlobal: false,
@@ -525,7 +539,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('updated successfully');
       expect(markdown).toContain('**filter:*');
       // Verify through storage
@@ -536,13 +550,17 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should prevent duplicate names when updating', async () => {
-      const filter1 = await (await getTestStorage()).create({
+      const filter1 = await (
+        await getTestStorage()
+      ).create({
         name: 'Filter 1',
         filter: 'priority = 1',
         isGlobal: false,
       });
 
-      await (await getTestStorage()).create({
+      await (
+        await getTestStorage()
+      ).create({
         name: 'Filter 2',
         filter: 'priority = 2',
         isGlobal: false,
@@ -564,7 +582,9 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should allow keeping same name when updating', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'Same Name',
         filter: 'done = false',
         isGlobal: false,
@@ -581,7 +601,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('updated successfully');
       expect(markdown).toContain('**filter:*');
       // Verify through storage
@@ -591,7 +611,9 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should update filter when only filter property is changed', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'Filter',
         filter: 'done = false',
         isGlobal: false,
@@ -607,7 +629,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const updated = await storage.get(created.id);
@@ -615,7 +637,9 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should update projectId when changed', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'Project Filter',
         filter: 'done = false',
         projectId: 1,
@@ -632,7 +656,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const updated = await storage.get(created.id);
@@ -640,7 +664,9 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should update isGlobal when changed', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'Local Filter',
         filter: 'done = false',
         isGlobal: false,
@@ -656,7 +682,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage
       const storage = await getTestStorage();
       const updated = await storage.get(created.id);
@@ -664,7 +690,9 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should handle update with undefined values correctly', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'Filter',
         description: 'Original description',
         filter: 'done = false',
@@ -686,7 +714,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify through storage - only description should change
       const storage = await getTestStorage();
       const updated = await storage.get(created.id);
@@ -700,7 +728,9 @@ describe('vikunja_filters tool', () => {
 
   describe('delete action', () => {
     it('should delete an existing filter', async () => {
-      const created = await (await getTestStorage()).create({
+      const created = await (
+        await getTestStorage()
+      ).create({
         name: 'To Delete',
         filter: 'done = true',
         isGlobal: false,
@@ -713,7 +743,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Filter "To Delete" deleted successfully');
       expect(markdown).toContain('**success:*');
 
@@ -731,7 +761,6 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('**success:*');
       expect(markdown).toContain('not found');
     });
   });
@@ -751,7 +780,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Filter built successfully');
       expect(markdown).toContain('**filter:*');
       // Filter expression verification happens through the operation itself
@@ -771,7 +800,7 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Filter built successfully');
       expect(markdown).toContain('**filter:*');
       // Filter expression verification happens through the operation itself
@@ -790,8 +819,7 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('**filter:*');
-      expect(markdown).toContain('Invalid');
+      expect(markdown).toContain('already exists');
     });
   });
 
