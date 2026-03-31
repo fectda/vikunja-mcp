@@ -9,7 +9,7 @@ import {
   registerTaskCommentsTool,
   registerTaskRemindersTool,
   registerTaskLabelsTool,
-  registerTaskRelationsTool
+  registerTaskRelationsTool,
 } from '../../src/tools/index';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { Task, User } from 'node-vikunja';
@@ -19,7 +19,14 @@ import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mo
 import { getClientFromContext } from '../../src/client';
 
 // Import AORP test helpers
-import { extractTasksData, extractTaskData, expectAorpSuccess, expectAorpError, getAorpData, getAorpMetadata } from '../utils/aorp-test-helpers';
+import {
+  extractTasksData,
+  extractTaskData,
+  expectAorpSuccess,
+  expectAorpError,
+  getAorpData,
+  getAorpMetadata,
+} from '../utils/aorp-test-helpers';
 import { parseMarkdown } from '../utils/markdown';
 
 // Mock the modules
@@ -122,9 +129,14 @@ describe('Tasks Tool', () => {
         getTaskComments: jest.fn(),
         createTaskComment: jest.fn(),
         updateTaskLabels: jest.fn(),
-        bulkAssignUsersToTask: jest.fn(),
+        assignUserToTask: jest.fn(),
         removeUserFromTask: jest.fn(),
+        bulkAssignUsersToTask: jest.fn(),
         bulkUpdateTasks: jest.fn(),
+        addLabelToTask: jest.fn(),
+        removeLabelFromTask: jest.fn(),
+        createTaskRelation: jest.fn(),
+        deleteTaskRelation: jest.fn(),
       },
       projects: {
         getProjects: jest.fn(),
@@ -164,7 +176,7 @@ describe('Tasks Tool', () => {
       apiUrl: 'https://api.vikunja.test',
       apiToken: 'test-token',
       authType: 'api-token' as const,
-      userId: 'test-user-123'
+      userId: 'test-user-123',
     });
     mockAuthManager.getAuthType.mockReturnValue('api-token');
 
@@ -174,7 +186,9 @@ describe('Tasks Tool', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
+      tool: jest.fn() as jest.MockedFunction<
+        (name: string, description: string, schema: any, handler: any) => void
+      >,
     } as MockServer;
 
     // Register the comprehensive tasks tool
@@ -207,7 +221,7 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            const aorpStatus = parsed.getAorpStatus();
+      const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
       expect(markdown).toContain('**count:**');
@@ -250,7 +264,7 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            const aorpStatus = parsed.getAorpStatus();
+      const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
       expect(markdown).toContain('**count:**');
@@ -278,7 +292,7 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            const aorpStatus = parsed.getAorpStatus();
+      const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
       expect(markdown).toContain('**count:**');
@@ -306,11 +320,11 @@ describe('Tasks Tool', () => {
 
       await expect(callTool('list')).rejects.toThrow(
         'Authentication required to access task management features. Please connect first:\n' +
-        'vikunja_auth.connect({\n' +
-        '  apiUrl: \'https://your-vikunja.com/api/v1\',\n' +
-        '  apiToken: \'your-api-token\'\n' +
-        '})\n\n' +
-        'Get your API token from Vikunja Settings > API Access.'
+          'vikunja_auth.connect({\n' +
+          "  apiUrl: 'https://your-vikunja.com/api/v1',\n" +
+          "  apiToken: 'your-api-token'\n" +
+          '})\n\n' +
+          'Get your API token from Vikunja Settings > API Access.',
       );
     });
 
@@ -355,8 +369,9 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('success');    });
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
+    });
 
     it('should create a task with all optional fields', async () => {
       const fullTask = {
@@ -452,9 +467,7 @@ describe('Tasks Tool', () => {
           projectId: 1,
           labels: [1, 2],
         }),
-      ).rejects.toThrow(
-        "Circuit breaker"
-      );
+      ).rejects.toThrow('Circuit breaker');
 
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
     });
@@ -477,9 +490,7 @@ describe('Tasks Tool', () => {
           labels: [1],
           assignees: [1, 2],
         }),
-      ).rejects.toThrow(
-        "Circuit breaker"
-      );
+      ).rejects.toThrow('Circuit breaker');
 
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -510,7 +521,8 @@ describe('Tasks Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('success');    });
+      expect(aorpStatus.type).toBe('success');
+    });
 
     it('should handle non-Error failures during label assignment', async () => {
       mockClient.tasks.createTask.mockResolvedValue({ ...mockTask, id: 1 });
@@ -523,9 +535,7 @@ describe('Tasks Tool', () => {
           projectId: 1,
           labels: [1, 2],
         }),
-      ).rejects.toThrow(
-        "Circuit breaker"
-      );
+      ).rejects.toThrow('Circuit breaker');
 
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
     });
@@ -633,9 +643,7 @@ describe('Tasks Tool', () => {
     it('should handle non-Error API errors in get', async () => {
       mockClient.tasks.getTask.mockRejectedValue({ code: 404 });
 
-      await expect(callTool('get', { id: 1 })).rejects.toThrow(
-        'Failed to get task',
-      );
+      await expect(callTool('get', { id: 1 })).rejects.toThrow('Failed to get task');
     });
 
     it('should validate task ID', async () => {
@@ -665,8 +673,9 @@ describe('Tasks Tool', () => {
         done: false,
       });
 
-      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(1, 
-        expect.objectContaining({ done: false })
+      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ done: false }),
       );
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
@@ -736,7 +745,8 @@ describe('Tasks Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('success');    });
+      expect(aorpStatus.type).toBe('success');
+    });
 
     it('should handle assignee updates with diff logic', async () => {
       const taskWithAssignees = {
@@ -862,14 +872,17 @@ describe('Tasks Tool', () => {
       const taskWithAssignees = {
         ...mockTask,
         id: 1,
-        assignees: [{ id: 1, username: 'user1' }, { id: 2, username: 'user2' }],
+        assignees: [
+          { id: 1, username: 'user1' },
+          { id: 2, username: 'user2' },
+        ],
       };
 
       mockClient.tasks.getTask
         .mockResolvedValueOnce(taskWithAssignees) // For initial fetch
         .mockResolvedValueOnce(taskWithAssignees); // For assignee diff calculation
       mockClient.tasks.updateTask.mockResolvedValue(taskWithAssignees);
-      
+
       // Mock removeUserFromTask to fail
       mockClient.tasks.removeUserFromTask.mockRejectedValue(new Error('Failed to remove user'));
 
@@ -992,7 +1005,8 @@ describe('Tasks Tool', () => {
       const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('delete-task');
-      expect(markdown).toContain('Task "Test Task" deleted successfully');    });
+      expect(markdown).toContain('Task "Test Task" deleted successfully');
+    });
 
     it('should handle deletion errors', async () => {
       mockClient.tasks.deleteTask.mockRejectedValue(new Error('Cannot delete task'));
@@ -1015,7 +1029,8 @@ describe('Tasks Tool', () => {
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
-      expect(markdown).toContain('delete-task');    });
+      expect(markdown).toContain('delete-task');
+    });
 
     it('should handle non-Error API errors in delete', async () => {
       mockClient.tasks.deleteTask.mockRejectedValue(500);
@@ -1391,7 +1406,9 @@ describe('Tasks Tool', () => {
       (getClientFromContext as jest.Mock).mockImplementation(() => {
         throw new Error('Failed to initialize client');
       });
-      (getClientFromContext as jest.Mock).mockRejectedValue(new Error('Failed to initialize client'));
+      (getClientFromContext as jest.Mock).mockRejectedValue(
+        new Error('Failed to initialize client'),
+      );
 
       await expect(callTool('list')).rejects.toThrow('Failed to initialize client');
     });
@@ -1489,20 +1506,20 @@ describe('Tasks Tool', () => {
         Promise.resolve({ ...mockTask, id, done: false }),
       );
       mockClient.tasks.bulkUpdateTasks.mockResolvedValue({ message: 'Tasks updated successfully' });
-      
+
       const result = await callTool('bulk-update', {
         taskIds,
         field: 'done',
         value: 'false' as any, // String "false" should be converted to boolean false
       });
-      
+
       // Should call bulk update API with boolean false (not string "false")
       expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
         task_ids: [1, 2],
         field: 'done',
         value: false, // Converted from string "false" to boolean false
       });
-      
+
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
@@ -1742,7 +1759,7 @@ describe('Tasks Tool', () => {
 
       // Mock getTask for fetching current task state (used by fallback)
       mockClient.tasks.getTask
-        .mockResolvedValueOnce(task1)  // First task for fallback update
+        .mockResolvedValueOnce(task1) // First task for fallback update
         .mockResolvedValueOnce(task2); // Second task for fallback update
 
       // Mock updateTask for the fallback individual updates
@@ -1770,8 +1787,14 @@ describe('Tasks Tool', () => {
 
       // Verify fallback to individual updates was triggered
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
-      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(371, expect.objectContaining({ priority: 5 }));
-      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(372, expect.objectContaining({ priority: 5 }));
+      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(
+        371,
+        expect.objectContaining({ priority: 5 }),
+      );
+      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(
+        372,
+        expect.objectContaining({ priority: 5 }),
+      );
 
       // Parse response and verify tasks have been updated via fallback
       const markdown = result.content[0].text;
@@ -1779,11 +1802,11 @@ describe('Tasks Tool', () => {
       const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(tasksData.tasks).toHaveLength(2);
-      
+
       // Verify that the returned tasks now show the UPDATED priority values
-      const updatedTask1 = tasksData.tasks.find(t => t.id === 371);
-      const updatedTask2 = tasksData.tasks.find(t => t.id === 372);
-      
+      const updatedTask1 = tasksData.tasks.find((t) => t.id === 371);
+      const updatedTask2 = tasksData.tasks.find((t) => t.id === 372);
+
       expect(updatedTask1.priority).toBe(5); // Updated to 5
       expect(updatedTask2.priority).toBe(5); // Updated to 5
     });
@@ -1796,9 +1819,7 @@ describe('Tasks Tool', () => {
       mockClient.tasks.bulkUpdateTasks.mockResolvedValue([task1, task2]);
 
       // Mock fallback
-      mockClient.tasks.getTask
-        .mockResolvedValueOnce(task1)
-        .mockResolvedValueOnce(task2);
+      mockClient.tasks.getTask.mockResolvedValueOnce(task1).mockResolvedValueOnce(task2);
       mockClient.tasks.updateTask
         .mockResolvedValueOnce({ ...task1, done: true })
         .mockResolvedValueOnce({ ...task2, done: true });
@@ -1815,7 +1836,7 @@ describe('Tasks Tool', () => {
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(tasksData.tasks.every(t => t.done === true)).toBe(true);
+      expect(tasksData.tasks.every((t) => t.done === true)).toBe(true);
     });
 
     it('should detect bulk update failures for due_date field', async () => {
@@ -1827,9 +1848,7 @@ describe('Tasks Tool', () => {
       mockClient.tasks.bulkUpdateTasks.mockResolvedValue([task1, task2]);
 
       // Mock fallback
-      mockClient.tasks.getTask
-        .mockResolvedValueOnce(task1)
-        .mockResolvedValueOnce(task2);
+      mockClient.tasks.getTask.mockResolvedValueOnce(task1).mockResolvedValueOnce(task2);
       mockClient.tasks.updateTask
         .mockResolvedValueOnce({ ...task1, due_date: newDueDate })
         .mockResolvedValueOnce({ ...task2, due_date: newDueDate });
@@ -1846,7 +1865,7 @@ describe('Tasks Tool', () => {
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(tasksData.tasks.every(t => t.due_date === newDueDate)).toBe(true);
+      expect(tasksData.tasks.every((t) => t.due_date === newDueDate)).toBe(true);
     });
 
     it('should detect bulk update failures for project_id field', async () => {
@@ -1857,9 +1876,7 @@ describe('Tasks Tool', () => {
       mockClient.tasks.bulkUpdateTasks.mockResolvedValue([task1, task2]);
 
       // Mock fallback
-      mockClient.tasks.getTask
-        .mockResolvedValueOnce(task1)
-        .mockResolvedValueOnce(task2);
+      mockClient.tasks.getTask.mockResolvedValueOnce(task1).mockResolvedValueOnce(task2);
       mockClient.tasks.updateTask
         .mockResolvedValueOnce({ ...task1, project_id: 5 })
         .mockResolvedValueOnce({ ...task2, project_id: 5 });
@@ -1876,7 +1893,7 @@ describe('Tasks Tool', () => {
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(tasksData.tasks.every(t => t.project_id === 5)).toBe(true);
+      expect(tasksData.tasks.every((t) => t.project_id === 5)).toBe(true);
     });
 
     it('should validate recurring fields in bulk update', async () => {
@@ -2214,22 +2231,24 @@ describe('Tasks Tool', () => {
         id: 1,
         assignees: [{ id: 1, username: 'user1' }],
       };
-      
+
       mockClient.tasks.getTask
         .mockResolvedValueOnce(taskWithAssignees) // For fetch at start
         .mockResolvedValueOnce(taskWithAssignees) // For assignee diff calculation
         .mockResolvedValueOnce({ ...taskWithAssignees, assignees: [] }); // For final fetch
-      
+
       mockClient.tasks.updateTask.mockResolvedValue(taskWithAssignees);
-      
+
       // Mock removeUserFromTask to fail
       mockClient.tasks.removeUserFromTask.mockRejectedValue(new Error('Failed to remove user'));
 
-      await expect(callTool('bulk-update', {
-        taskIds: [1],
-        field: 'assignees',
-        value: [],
-      })).rejects.toThrow('Bulk update failed. Could not update any tasks');
+      await expect(
+        callTool('bulk-update', {
+          taskIds: [1],
+          field: 'assignees',
+          value: [],
+        }),
+      ).rejects.toThrow('Bulk update failed. Could not update any tasks');
 
       expect(mockClient.tasks.removeUserFromTask).toHaveBeenCalledWith(1, 1);
     });
@@ -2237,17 +2256,17 @@ describe('Tasks Tool', () => {
     it('should handle partial success in bulk update', async () => {
       // Mock bulk API to fail (which triggers fallback)
       mockClient.tasks.bulkUpdateTasks.mockRejectedValue(new Error('Bulk API not supported'));
-      
+
       // Mock initial task fetches
       mockClient.tasks.getTask
         .mockResolvedValueOnce({ ...mockTask, id: 1 }) // initial fetch for task 1
         .mockResolvedValueOnce({ ...mockTask, id: 2 }); // initial fetch for task 2
-      
+
       // Mock update to succeed for both tasks
       mockClient.tasks.updateTask
         .mockResolvedValueOnce({ ...mockTask, id: 1, priority: 5 })
         .mockResolvedValueOnce({ ...mockTask, id: 2, priority: 5 });
-      
+
       // Mock the final fetch - succeed for task 1, fail for task 2
       mockClient.tasks.getTask
         .mockResolvedValueOnce({ ...mockTask, id: 1, priority: 5 })
@@ -2270,7 +2289,7 @@ describe('Tasks Tool', () => {
     it('should handle generic errors in bulk update', async () => {
       // Mock bulk API to succeed initially
       mockClient.tasks.bulkUpdateTasks.mockResolvedValue([]);
-      
+
       // Mock getTask to throw TypeError when fetching results
       mockClient.tasks.getTask.mockImplementation(() => {
         throw new TypeError('Cannot read property of undefined');
@@ -2354,9 +2373,7 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain(
-        'Bulk delete partially completed. Successfully deleted 2 tasks',
-      );
+      expect(markdown).toContain('Bulk delete partially completed. Successfully deleted 2 tasks');
 
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledTimes(3);
     });
@@ -2729,7 +2746,9 @@ describe('Tasks Tool', () => {
       (getClientFromContext as jest.Mock).mockImplementation(() => {
         throw 'String error from client initialization';
       });
-      (getClientFromContext as jest.Mock).mockRejectedValue('String error from client initialization');
+      (getClientFromContext as jest.Mock).mockRejectedValue(
+        'String error from client initialization',
+      );
 
       await expect(callTool('list')).rejects.toThrow(
         'Task operation error: String error from client initialization',
