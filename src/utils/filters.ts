@@ -25,7 +25,8 @@ const MAX_VALUE_LENGTH = 200;
 // Allow alphanumeric, common punctuation, whitespace, and international characters
 // Disallow shell injection and XSS characters like ; | $ ` { } [ ] ~ ^ $
 // NOTE: < > = ( ) & | are needed for filter comparisons and logical operators
-const ALLOWED_CHARS = /^[\t\n\r a-zA-Z0-9_.\-="'!,@#%*+?:<>()\/\\|&]+$/;
+// Using Unicode property escapes to support international characters
+const ALLOWED_CHARS = /^[\t\n\r a-zA-Z0-9_.\-="'!,@#%*+?:<>()\/\\|&\p{L}]+$/u;
 
 /**
  * Pre-compiled optimized regex patterns for performance and security
@@ -165,6 +166,7 @@ interface ParseState {
   input: string;
   position: number;
   length: number;
+  valueError?: string;
 }
 
 /**
@@ -227,9 +229,9 @@ function parseQuotedString(state: ParseState): string | null {
       state.position++;
     }
 
-    // Prevent extremely long quoted values
+    // Prevent extremely long quoted values - reject instead of silently truncating
     if (value.length > MAX_VALUE_LENGTH) {
-      return null;
+      return state.valueError || 'Value too long';
     }
   }
 
@@ -606,6 +608,17 @@ export function parseFilterString(filterStr: string): ParseResult {
 
   try {
     const expression = parseExpression(state);
+
+    // Check if there was a value error during parsing
+    if (state.valueError) {
+      return {
+        expression: null,
+        error: {
+          message: state.valueError,
+          position: 0,
+        },
+      };
+    }
 
     // Check if we consumed the entire input
     skipWhitespace(state);
