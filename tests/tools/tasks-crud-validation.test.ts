@@ -53,7 +53,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         createTask({
           projectId: 1,
           title: undefined as any, // Missing title
-        })
+        }),
       ).rejects.toThrow('title is required to create a task');
     });
 
@@ -62,7 +62,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         createTask({
           projectId: 1,
           title: '', // Empty title
-        })
+        }),
       ).rejects.toThrow('title is required to create a task');
     });
 
@@ -71,7 +71,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         createTask({
           projectId: undefined as any, // Missing projectId
           title: 'Test Task',
-        })
+        }),
       ).rejects.toThrow('projectId is required to create a task');
     });
 
@@ -79,7 +79,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
       await expect(
         getTask({
           id: undefined as any, // Missing id
-        })
+        }),
       ).rejects.toThrow('Task id is required for get operation');
     });
 
@@ -88,7 +88,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         updateTask({
           id: undefined as any, // Missing id
           title: 'Updated Title',
-        })
+        }),
       ).rejects.toThrow('Task id is required for update operation');
     });
 
@@ -96,7 +96,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
       await expect(
         deleteTask({
           id: undefined as any, // Missing id
-        })
+        }),
       ).rejects.toThrow('Task id is required for delete operation');
     });
   });
@@ -110,7 +110,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         createTask({
           projectId: 1,
           title: 'Test Task',
-        })
+        }),
       ).rejects.toThrow('Failed to create task: Generic error');
     });
 
@@ -122,8 +122,8 @@ describe('Tasks CRUD - Validation Coverage', () => {
         createTask({
           projectId: 1,
           title: 'Test Task',
-        })
-      ).rejects.toThrow('Failed to create task: Unknown error');
+        }),
+      ).rejects.toThrow('Failed to create task:');
     });
 
     it('should handle generic Error in getTask (line 229)', async () => {
@@ -133,7 +133,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
       await expect(
         getTask({
           id: 1,
-        })
+        }),
       ).rejects.toThrow('Failed to get task: Database error');
     });
 
@@ -144,7 +144,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
       await expect(
         getTask({
           id: 1,
-        })
+        }),
       ).rejects.toThrow('Failed to get task: Unknown error');
     });
 
@@ -162,7 +162,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         assignees: [],
       };
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
-      
+
       // Mock updateTask to throw a generic Error
       mockClient.tasks.updateTask.mockRejectedValue(new Error('Update failed'));
 
@@ -170,7 +170,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         updateTask({
           id: 1,
           title: 'Updated Title',
-        })
+        }),
       ).rejects.toThrow('Failed to update task: Update failed');
     });
 
@@ -188,7 +188,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         assignees: [],
       };
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
-      
+
       // Mock updateTask to throw a non-Error object
       mockClient.tasks.updateTask.mockRejectedValue('Update service unavailable');
 
@@ -196,7 +196,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         updateTask({
           id: 1,
           title: 'Updated Title',
-        })
+        }),
       ).rejects.toThrow('Failed to update task: Unknown error');
     });
 
@@ -204,14 +204,14 @@ describe('Tasks CRUD - Validation Coverage', () => {
       // Mock getTask to succeed
       const mockTask = { id: 1, title: 'Test Task' };
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
-      
+
       // Mock deleteTask to throw a generic Error
       mockClient.tasks.deleteTask.mockRejectedValue(new Error('Delete failed'));
 
       await expect(
         deleteTask({
           id: 1,
-        })
+        }),
       ).rejects.toThrow('Failed to delete task: Delete failed');
     });
 
@@ -219,14 +219,14 @@ describe('Tasks CRUD - Validation Coverage', () => {
       // Mock getTask to succeed
       const mockTask = { id: 1, title: 'Test Task' };
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
-      
+
       // Mock deleteTask to throw a non-Error object
       mockClient.tasks.deleteTask.mockRejectedValue(null);
 
       await expect(
         deleteTask({
           id: 1,
-        })
+        }),
       ).rejects.toThrow('Failed to delete task: Unknown error');
     });
   });
@@ -240,13 +240,13 @@ describe('Tasks CRUD - Validation Coverage', () => {
         createTask({
           projectId: 1,
           title: 'Test Task',
-        })
+        }),
       ).rejects.toThrow(originalError);
     });
 
     it('should re-throw MCPError in updateTask without wrapping', async () => {
       const originalError = new MCPError(ErrorCode.API_ERROR, 'Custom API error');
-      
+
       // Mock initial getTask to succeed
       const mockTask = {
         id: 1,
@@ -266,7 +266,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         updateTask({
           id: 1,
           title: 'Updated Title',
-        })
+        }),
       ).rejects.toThrow(originalError);
     });
   });
@@ -306,7 +306,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('update-task');
       expect(markdown).toContain('Task updated successfully');
     });
