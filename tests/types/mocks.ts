@@ -130,7 +130,9 @@ export interface MockVikunjaClient {
 export type MockAuthManager = jest.Mocked<TestableAuthManager>;
 
 export interface MockServer {
-  tool: MockedFunction<(name: string, schema: ZodSchema, handler: ToolHandler) => void>;
+  tool: MockedFunction<
+    (name: string, description: string, schema: ZodSchema, handler: ToolHandler) => void
+  >;
 }
 
 export type ToolHandler = (args: Record<string, unknown>) => Promise<ToolResponse>;

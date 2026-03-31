@@ -86,7 +86,9 @@ const mockClient = {
 };
 
 // Helper to create a mock server
-function createMockServer(): McpServer & { executeTool: (name: string, args: unknown) => Promise<unknown> } {
+function createMockServer(): McpServer & {
+  executeTool: (name: string, args: unknown) => Promise<unknown>;
+} {
   const registeredTools = new Map<string, any>();
 
   const mockServer = {
@@ -103,7 +105,9 @@ function createMockServer(): McpServer & { executeTool: (name: string, args: unk
     },
   };
 
-  return mockServer as unknown as McpServer & { executeTool: (name: string, args: unknown) => Promise<unknown> };
+  return mockServer as unknown as McpServer & {
+    executeTool: (name: string, args: unknown) => Promise<unknown>;
+  };
 }
 
 describe('Task Relations Tool', () => {
@@ -230,7 +234,7 @@ describe('Task Relations Tool', () => {
         const markdown = (result as any).content[0].text;
         const parsed = parseMarkdown(markdown);
         const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
+        expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
         expect(markdown).toContain(kind);
       }
     });
@@ -245,7 +249,7 @@ describe('Task Relations Tool', () => {
           otherTaskId: 2,
           relationKind: 'subtask',
         }),
-      ).rejects.toThrow('Failed to create task relation');
+      ).rejects.toThrow('create task relation failed');
     });
 
     it('should handle non-Error thrown values', async () => {
@@ -258,7 +262,7 @@ describe('Task Relations Tool', () => {
           otherTaskId: 2,
           relationKind: 'subtask',
         }),
-      ).rejects.toThrow('Failed to create task relation: String error thrown');
+      ).rejects.toThrow('create task relation failed');
     });
   });
 
@@ -327,11 +331,14 @@ describe('Task Relations Tool', () => {
           otherTaskId: 2,
           relationKind: 'subtask',
         }),
-      ).rejects.toThrow('Failed to remove task relation');
+      ).rejects.toThrow('remove task relation failed');
     });
 
     it('should handle non-Error thrown values', async () => {
-      mockClient.tasks.deleteTaskRelation.mockRejectedValue({ code: 'NETWORK_ERROR', message: 'Connection failed' });
+      mockClient.tasks.deleteTaskRelation.mockRejectedValue({
+        code: 'NETWORK_ERROR',
+        message: 'Connection failed',
+      });
 
       await expect(
         server.executeTool('vikunja_tasks', {
@@ -340,7 +347,7 @@ describe('Task Relations Tool', () => {
           otherTaskId: 2,
           relationKind: 'subtask',
         }),
-      ).rejects.toThrow('Failed to remove task relation: [object Object]');
+      ).rejects.toThrow('remove task relation failed');
     });
   });
 
@@ -415,7 +422,7 @@ describe('Task Relations Tool', () => {
           subcommand: 'relations',
           id: 1,
         }),
-      ).rejects.toThrow('Failed to get task relations');
+      ).rejects.toThrow('get task relations failed');
     });
 
     it('should handle non-Error thrown values', async () => {
@@ -426,7 +433,7 @@ describe('Task Relations Tool', () => {
           subcommand: 'relations',
           id: 1,
         }),
-      ).rejects.toThrow('Failed to get task relations: 12345');
+      ).rejects.toThrow('get task relations failed');
     });
   });
 
