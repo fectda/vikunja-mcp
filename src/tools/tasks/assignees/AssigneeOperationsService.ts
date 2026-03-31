@@ -16,44 +16,35 @@ import { AUTH_ERROR_MESSAGES } from '../constants';
 export const AssigneeOperationsService = {
   /**
    * Assign multiple users to a task
-   * Uses single assign endpoint as bulk endpoint doesn't work in Vikunja
+   * Uses bulk endpoint for efficiency
    */
   async assignUsersToTask(taskId: number, assigneeIds: number[]): Promise<void> {
     const client = await getClientFromContext();
 
     try {
-      // Assign each user individually (bulk endpoint doesn't work in Vikunja)
-      for (const userId of assigneeIds) {
-        try {
-          await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
-            ...RETRY_CONFIG.AUTH_ERRORS,
-            shouldRetry: (error) => isAuthenticationError(error),
-          });
-        } catch (userError) {
-          // Check for specific Vikunja error codes
-          const errorObj = userError as { code?: number; message?: string };
-
-          if (errorObj.code === 7003) {
-            // User does not have access to the project
-            throw new MCPError(
-              ErrorCode.PERMISSION_DENIED,
-              `Cannot assign user ${userId} to task: This user does not have access to the project. ` +
-                `Share the project with the user first before assigning them to tasks.`,
-            );
-          }
-
-          if (errorObj.code === 1005) {
-            // User does not exist
-            throw new MCPError(
-              ErrorCode.NOT_FOUND,
-              `Cannot assign user ${userId} to task: User does not exist.`,
-            );
-          }
-
-          throw userError;
-        }
-      }
+      // Use bulk endpoint - more efficient than individual calls
+      await withRetry(() => client.tasks.bulkAssignUsersToTask(taskId, { user_ids: assigneeIds }), {
+        ...RETRY_CONFIG.AUTH_ERRORS,
+        shouldRetry: (error) => isAuthenticationError(error),
+      });
     } catch (assigneeError) {
+      // Check for specific Vikunja error codes
+      const errorObj = assigneeError as { code?: number; message?: string };
+
+      if (errorObj.code === 7003) {
+        throw new MCPError(
+          ErrorCode.PERMISSION_DENIED,
+          `Cannot assign users: One or more users do not have access to the project.`,
+        );
+      }
+
+      if (errorObj.code === 1005) {
+        throw new MCPError(
+          ErrorCode.NOT_FOUND,
+          `Cannot assign users: One or more users do not exist.`,
+        );
+      }
+
       // Check if it's an auth error after retries
       if (isAuthenticationError(assigneeError)) {
         throw new MCPError(
