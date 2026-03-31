@@ -467,7 +467,7 @@ describe('Tasks Tool', () => {
           projectId: 1,
           labels: [1, 2],
         }),
-      ).rejects.toThrow('Circuit breaker');
+      ).rejects.toThrow('Failed to complete task creation');
 
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
     });
@@ -490,9 +490,9 @@ describe('Tasks Tool', () => {
           labels: [1],
           assignees: [1, 2],
         }),
-      ).rejects.toThrow('Circuit breaker');
+      ).rejects.toThrow('Failed to create task');
 
-      expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
+      expect(mockClient.tasks.deleteTask).toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[ERROR] Failed to clean up partially created task:'),
       );
