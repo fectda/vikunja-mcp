@@ -113,7 +113,9 @@ describe('Teams Tool', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
+      tool: jest.fn() as jest.MockedFunction<
+        (name: string, description: string, schema: any, handler: any) => void
+      >,
     } as MockServer;
 
     // Register the tool
@@ -155,8 +157,8 @@ describe('Teams Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** list-teams");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** list-teams');
       expect(markdown).toContain('Retrieved 2 teams');
     });
 
@@ -190,7 +192,9 @@ describe('Teams Tool', () => {
     it('should handle non-Error API errors', async () => {
       mockClient.teams.getTeams.mockRejectedValue('String error');
 
-      await expect(callTool('list')).rejects.toThrow('vikunja_teams.list team failed: Unknown error');
+      await expect(callTool('list')).rejects.toThrow(
+        'vikunja_teams.list team failed: Unknown error',
+      );
     });
   });
 
@@ -210,8 +214,8 @@ describe('Teams Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** create-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** create-team');
       expect(markdown).toContain('Team "Test Team" created successfully');
     });
 
@@ -260,8 +264,8 @@ describe('Teams Tool', () => {
       });
 
       const markdown = result.content[0].text;
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** get-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** get-team');
       expect(markdown).toContain('Retrieved team "Test Team"');
     });
 
@@ -312,8 +316,8 @@ describe('Teams Tool', () => {
       });
 
       const markdown = result.content[0].text;
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** update-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** update-team');
       expect(markdown).toContain('Team "Updated Team Name" updated successfully');
     });
 
@@ -336,8 +340,8 @@ describe('Teams Tool', () => {
       });
 
       const markdown = result.content[0].text;
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** update-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** update-team');
     });
 
     it('should update both name and description', async () => {
@@ -390,8 +394,8 @@ describe('Teams Tool', () => {
       expect(mockClient.teams.deleteTeam).toHaveBeenCalledWith(1);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** delete-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** delete-team');
       expect(markdown).toContain('Team deleted successfully');
     });
 
@@ -404,8 +408,8 @@ describe('Teams Tool', () => {
       expect(mockClient.teams.deleteTeam).toHaveBeenCalledWith(5);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** delete-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** delete-team');
     });
 
     it('should handle team not found error', async () => {
@@ -440,8 +444,8 @@ describe('Teams Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** delete-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** delete-team');
       expect(markdown).toContain('Team deleted successfully');
     });
 
@@ -477,15 +481,27 @@ describe('Teams Tool', () => {
       expect(global.fetch).toHaveBeenCalled();
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** delete-team");
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** delete-team');
     });
   });
 
   describe('members subcommand', () => {
     const mockMembers = [
-      { id: 1, username: 'user1', admin: true, email: 'user1@example.com', created: '2025-01-01T00:00:00Z' },
-      { id: 2, username: 'user2', admin: false, email: 'user2@example.com', created: '2025-01-01T00:00:00Z' },
+      {
+        id: 1,
+        username: 'user1',
+        admin: true,
+        email: 'user1@example.com',
+        created: '2025-01-01T00:00:00Z',
+      },
+      {
+        id: 2,
+        username: 'user2',
+        admin: false,
+        email: 'user2@example.com',
+        created: '2025-01-01T00:00:00Z',
+      },
     ];
 
     it('should require team ID', async () => {
@@ -516,8 +532,8 @@ describe('Teams Tool', () => {
         });
 
         const markdown = result.content[0].text;
-        expect(markdown).toContain("## ✅ Success");
-        expect(markdown).toContain("**Operation:** list-team-members");
+        expect(markdown).toContain('## ✅ Success');
+        expect(markdown).toContain('**Operation:** list-team-members');
         expect(markdown).toContain('Retrieved 2 members');
       });
 
@@ -574,9 +590,9 @@ describe('Teams Tool', () => {
       });
 
       it('should validate user ID', async () => {
-        await expect(callTool('members', { id: 1, memberSubcommand: 'add', userId: 'invalid' })).rejects.toThrow(
-          'userId must be a positive integer',
-        );
+        await expect(
+          callTool('members', { id: 1, memberSubcommand: 'add', userId: 'invalid' }),
+        ).rejects.toThrow('userId must be a positive integer');
       });
 
       it('should add a member to team', async () => {
@@ -598,8 +614,8 @@ describe('Teams Tool', () => {
         });
 
         const markdown = result.content[0].text;
-        expect(markdown).toContain("## ✅ Success");
-        expect(markdown).toContain("**Operation:** add-team-member");
+        expect(markdown).toContain('## ✅ Success');
+        expect(markdown).toContain('**Operation:** add-team-member');
         expect(markdown).toContain('User 3 added to team successfully');
       });
 
@@ -674,8 +690,8 @@ describe('Teams Tool', () => {
         });
 
         const markdown = result.content[0].text;
-        expect(markdown).toContain("## ✅ Success");
-        expect(markdown).toContain("**Operation:** remove-team-member");
+        expect(markdown).toContain('## ✅ Success');
+        expect(markdown).toContain('**Operation:** remove-team-member');
         expect(markdown).toContain('User 2 removed from team successfully');
       });
 
@@ -694,9 +710,9 @@ describe('Teams Tool', () => {
 
     describe('members update subcommand', () => {
       it('should require user ID', async () => {
-        await expect(callTool('members', { id: 1, memberSubcommand: 'update', admin: true })).rejects.toThrow(
-          'User ID is required',
-        );
+        await expect(
+          callTool('members', { id: 1, memberSubcommand: 'update', admin: true }),
+        ).rejects.toThrow('User ID is required');
       });
 
       it('should require admin flag', async () => {
@@ -729,8 +745,8 @@ describe('Teams Tool', () => {
         });
 
         const markdown = result.content[0].text;
-        expect(markdown).toContain("## ✅ Success");
-        expect(markdown).toContain("**Operation:** update-team-member");
+        expect(markdown).toContain('## ✅ Success');
+        expect(markdown).toContain('**Operation:** update-team-member');
         expect(markdown).toContain('User 2 updated in team successfully');
       });
 
@@ -776,9 +792,9 @@ describe('Teams Tool', () => {
 
     describe('members invalid subcommand', () => {
       it('should reject invalid member subcommands', async () => {
-        await expect(
-          callTool('members', { id: 1, memberSubcommand: 'invalid' }),
-        ).rejects.toThrow('Invalid member subcommand: invalid');
+        await expect(callTool('members', { id: 1, memberSubcommand: 'invalid' })).rejects.toThrow(
+          'Invalid member subcommand: invalid',
+        );
       });
     });
   });
@@ -803,7 +819,9 @@ describe('Teams Tool', () => {
         throw new Error('Unexpected error');
       });
 
-      await expect(callTool('list')).rejects.toThrow('vikunja_teams.list team failed: Unexpected error');
+      await expect(callTool('list')).rejects.toThrow(
+        'vikunja_teams.list team failed: Unexpected error',
+      );
     });
 
     it('should handle non-Error thrown values in main handler', async () => {
@@ -812,22 +830,15 @@ describe('Teams Tool', () => {
         throw 'String error thrown';
       });
 
-      await expect(callTool('list')).rejects.toThrow('vikunja_teams.list team failed: Unknown error');
+      await expect(callTool('list')).rejects.toThrow(
+        'vikunja_teams.list team failed: Unknown error',
+      );
     });
   });
 
   describe('default subcommand', () => {
-    it('should default to list when no subcommand provided', async () => {
-      mockClient.teams.getTeams.mockResolvedValue([mockTeam]);
-
-      const result = await callTool();
-
-      expect(mockClient.teams.getTeams).toHaveBeenCalled();
-      const markdown = result.content[0].text;
-      const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain("**Operation:** list-teams");
-      expect(markdown).toContain('Retrieved 1 team');
+    it('should throw error when no subcommand provided', async () => {
+      await expect(callTool()).rejects.toThrow('Invalid subcommand');
     });
   });
 
