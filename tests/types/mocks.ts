@@ -59,9 +59,14 @@ export interface MockTaskService {
   getTaskComments: MockedFunction<(taskId: number) => Promise<TaskComment[]>>;
   createTaskComment: MockedFunction<(taskId: number, comment: string) => Promise<TaskComment>>;
   updateTaskLabels: MockedFunction<(taskId: number, labels: Label[]) => Promise<Label[]>>;
-  bulkAssignUsersToTask: MockedFunction<(taskId: number, assignees: User[]) => Promise<Message>>;
+  assignUserToTask: MockedFunction<(taskId: number, userId: number) => Promise<Message>>;
   removeUserFromTask: MockedFunction<(taskId: number, userId: number) => Promise<Message>>;
+  bulkAssignUsersToTask: MockedFunction<(taskId: number, assignees: User[]) => Promise<Message>>;
   bulkUpdateTasks: MockedFunction<(tasks: Task[]) => Promise<Task[]>>;
+  addLabelToTask: MockedFunction<(taskId: number, labelId: number) => Promise<Message>>;
+  removeLabelFromTask: MockedFunction<(taskId: number, labelId: number) => Promise<Message>>;
+  createTaskRelation: MockedFunction<(taskId: number, relation: unknown) => Promise<unknown>>;
+  deleteTaskRelation: MockedFunction<(taskId: number, relationId: number) => Promise<Message>>;
 }
 
 export interface MockProjectService {
@@ -70,7 +75,9 @@ export interface MockProjectService {
   getProject: MockedFunction<(projectId: number) => Promise<Project>>;
   updateProject: MockedFunction<(projectId: number, project: Partial<Project>) => Promise<Project>>;
   deleteProject: MockedFunction<(projectId: number) => Promise<Message>>;
-  createLinkShare: MockedFunction<(projectId: number, shareData: LinkShareData) => Promise<LinkShare>>;
+  createLinkShare: MockedFunction<
+    (projectId: number, shareData: LinkShareData) => Promise<LinkShare>
+  >;
   getLinkShares: MockedFunction<(projectId: number) => Promise<LinkShare[]>>;
   getLinkShare: MockedFunction<(projectId: number, shareId: number) => Promise<LinkShare>>;
   deleteLinkShare: MockedFunction<(projectId: number, shareId: number) => Promise<Message>>;
@@ -105,7 +112,9 @@ export interface ShareAuthResponse {
 }
 
 export interface MockShareService {
-  getShareAuth: MockedFunction<(linkShareHash: string, password?: string) => Promise<ShareAuthResponse>>;
+  getShareAuth: MockedFunction<
+    (linkShareHash: string, password?: string) => Promise<ShareAuthResponse>
+  >;
 }
 
 export interface MockVikunjaClient {
