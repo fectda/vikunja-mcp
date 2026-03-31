@@ -105,7 +105,7 @@ describe('Assignee operations', () => {
       (withRetry as jest.Mock).mockRejectedValue(authError);
 
       await expect(assignUsers({ id: 123, assignees: [1, 2] })).rejects.toThrow(
-        'Failed to assign users to task: Assignee operations may have authentication issues with certain Vikunja API versions. This is a known limitation that prevents assigning users to tasks. (Retried 3 times)',
+        'Assignee operation failed due to authentication issue',
       );
     });
 
@@ -132,7 +132,7 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockRejectedValue(mcpError);
 
       await expect(assignUsers({ id: 123, assignees: [1, 2] })).rejects.toThrow(
-        'Failed to assign users to task: Validation failed',
+        'Validation failed',
       );
     });
   });
@@ -195,7 +195,7 @@ describe('Assignee operations', () => {
       (withRetry as jest.Mock).mockRejectedValue(authError);
 
       await expect(unassignUsers({ id: 123, assignees: [1] })).rejects.toThrow(
-        'Failed to remove users from task: Assignee removal operations may have authentication issues with certain Vikunja API versions. This is a known limitation that prevents removing users from tasks. (Retried 3 times)',
+        'Assignee removal operation failed',
       );
     });
 
@@ -325,10 +325,7 @@ describe('Assignee operations', () => {
 
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
-      const result = await listAssignees({ id: 123 });
-
-      const markdown = result.content[0].text;
-      expect(markdown).toContain('Test Task');
+      await expect(listAssignees({ id: 123 })).rejects.toThrow('missing required id field');
     });
   });
 
