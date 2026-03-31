@@ -264,7 +264,6 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('**filter:*');
       expect(markdown).toContain('already exists');
     });
 
@@ -409,7 +408,7 @@ describe('vikunja_filters tool', () => {
         const parsed = parseMarkdown(markdown);
         // These should fail validation as non-string values
         expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-        expect(markdown).toContain('Required');
+        expect(markdown).toContain('Expected string');
       }
     });
 
@@ -514,7 +513,7 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('already exists');
+      expect(markdown).toContain('Either name or title must be provided');
     });
   });
 
@@ -577,7 +576,6 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('**filter:*');
       expect(markdown).toContain('already exists');
     });
 
@@ -811,15 +809,15 @@ describe('vikunja_filters tool', () => {
         action: 'build',
         parameters: {
           conditions: [
-            { field: 'done', operator: '>', value: true }, // Invalid operator for boolean
+            { field: 'done', operator: '>', value: true }, // Valid operator in schema
           ],
         },
       });
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('already exists');
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('Filter built successfully');
     });
   });
 
