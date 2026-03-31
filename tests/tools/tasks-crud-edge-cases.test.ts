@@ -40,6 +40,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         deleteTask: jest.fn(),
         updateTaskLabels: jest.fn(),
         bulkAssignUsersToTask: jest.fn(),
+        assignUserToTask: jest.fn(),
         removeUserFromTask: jest.fn(),
       },
     } as any;
@@ -248,9 +249,12 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       });
 
       // Should call updateTask with expected repeat configuration
-      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({
-        repeat_mode: 0, // Week mode converts to 0
-      }));
+      expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          repeat_mode: 0, // Week mode converts to 0
+        }),
+      );
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
@@ -279,7 +283,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         1,
         expect.objectContaining({
           repeat_after: 5, // Without repeatMode, value is used as-is (seconds)
-        })
+        }),
       );
 
       const markdown = result.content[0].text;
@@ -372,13 +376,11 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Mock successful getTask
       const mockTask = { id: 1, title: 'Test Task' };
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
-      
+
       // Mock deleteTask to fail with non-Error object
       mockClient.tasks.deleteTask.mockRejectedValue({ status: 500, message: 'Server error' });
 
-      await expect(deleteTask({ id: 1 })).rejects.toThrow(
-        'Failed to delete task: Unknown error'
-      );
+      await expect(deleteTask({ id: 1 })).rejects.toThrow('Failed to delete task: Unknown error');
     });
 
     it('should handle string errors during deletion', async () => {
@@ -391,7 +393,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       // The error handler now preserves string messages for better debugging
       await expect(deleteTask({ id: 1 })).rejects.toThrow(
-        'Failed to delete task: String error message'
+        'Failed to delete task: String error message',
       );
     });
   });
@@ -401,9 +403,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Mock getTask to fail with non-Error object
       mockClient.tasks.getTask.mockRejectedValue({ code: 404, message: 'Not found' });
 
-      await expect(getTask({ id: 1 })).rejects.toThrow(
-        'Failed to get task: Unknown error'
-      );
+      await expect(getTask({ id: 1 })).rejects.toThrow('Failed to get task: Unknown error');
     });
 
     it('should handle string errors in getTask', async () => {
@@ -412,7 +412,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       // The error handler now preserves string messages for better debugging
       await expect(getTask({ id: 1 })).rejects.toThrow(
-        'Failed to get task: Database connection lost'
+        'Failed to get task: Database connection lost',
       );
     });
 
@@ -421,9 +421,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       mockClient.tasks.getTask.mockRejectedValue(undefined);
 
       // Undefined errors still show as "Unknown error"
-      await expect(getTask({ id: 1 })).rejects.toThrow(
-        'Failed to get task: Unknown error'
-      );
+      await expect(getTask({ id: 1 })).rejects.toThrow('Failed to get task: Unknown error');
     });
   });
 
@@ -431,23 +429,21 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
     it('should handle validation errors for zero and negative IDs', async () => {
       // Zero projectId triggers the "required" check first
       await expect(createTask({ projectId: 0, title: 'Test' })).rejects.toThrow(
-        'projectId is required to create a task'
+        'projectId is required to create a task',
       );
 
       await expect(createTask({ projectId: -1, title: 'Test' })).rejects.toThrow(
-        'projectId must be a positive integer'
+        'projectId must be a positive integer',
       );
 
-      await expect(getTask({ id: 0 })).rejects.toThrow(
-        'Task id is required for get operation'
-      );
+      await expect(getTask({ id: 0 })).rejects.toThrow('Task id is required for get operation');
 
       await expect(updateTask({ id: -1, title: 'Test' })).rejects.toThrow(
-        'id must be a positive integer'
+        'id must be a positive integer',
       );
 
       await expect(deleteTask({ id: 0 })).rejects.toThrow(
-        'Task id is required for delete operation'
+        'Task id is required for delete operation',
       );
     });
 
@@ -457,14 +453,14 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
           projectId: 1,
           title: 'Test',
           dueDate: 'invalid-date',
-        })
+        }),
       ).rejects.toThrow('dueDate must be a valid ISO 8601 date string');
 
       await expect(
         updateTask({
           id: 1,
           dueDate: '2024-13-45', // Invalid date
-        })
+        }),
       ).rejects.toThrow('dueDate must be a valid ISO 8601 date string');
     });
 
@@ -474,7 +470,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
           projectId: 1,
           title: 'Test',
           assignees: [1, 0, 2], // 0 is invalid
-        })
+        }),
       ).rejects.toThrow('assignee ID must be a positive integer');
 
       await expect(
@@ -482,7 +478,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
           projectId: 1,
           title: 'Test',
           assignees: [1, -5, 2], // -5 is invalid
-        })
+        }),
       ).rejects.toThrow('assignee ID must be a positive integer');
     });
   });
@@ -491,11 +487,11 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
     it('should handle assignee failure during createTask', async () => {
       const createdTask = { id: 1, title: 'Test Task', project_id: 1 };
       mockClient.tasks.createTask.mockResolvedValue(createdTask);
-      
+
       // Mock assignee assignment failure
       const assigneeError = new Error('Assignee assignment failed');
       mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(assigneeError);
-      
+
       // Mock successful rollback
       mockClient.tasks.deleteTask.mockResolvedValue(undefined);
 
@@ -504,18 +500,18 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
           projectId: 1,
           title: 'Test Task',
           assignees: [1, 2],
-        })
+        }),
       ).rejects.toThrow('Failed to complete task creation: Assignee assignment failed');
     });
 
     it('should handle rollback failure during createTask', async () => {
       const createdTask = { id: 1, title: 'Test Task', project_id: 1 };
       mockClient.tasks.createTask.mockResolvedValue(createdTask);
-      
+
       // Mock label assignment failure
       const labelError = new Error('Label assignment failed');
       mockClient.tasks.updateTaskLabels.mockRejectedValue(labelError);
-      
+
       // Mock failed rollback
       const deleteError = new Error('Delete failed');
       mockClient.tasks.deleteTask.mockRejectedValue(deleteError);
@@ -525,7 +521,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
           projectId: 1,
           title: 'Test Task',
           labels: [1, 2],
-        })
+        }),
       ).rejects.toThrow('Task rollback also failed');
     });
   });
