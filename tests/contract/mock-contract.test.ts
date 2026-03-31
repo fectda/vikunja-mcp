@@ -31,7 +31,7 @@ const MOCK_SERVICE_METHODS: Record<string, Set<string>> = {
     'assignUserToTask',
     'removeUserFromTask',
     'bulkUpdateTasks',
-    'assignUserToTask',
+    'bulkAssignUsersToTask',
     'addLabelToTask',
     'removeLabelFromTask',
     'createTaskRelation',
