@@ -29,6 +29,7 @@ describe('TaskCreationService', () => {
         getTask: jest.fn(),
         updateTaskLabels: jest.fn(),
         bulkAssignUsersToTask: jest.fn(),
+        assignUserToTask: jest.fn(),
       },
     } as jest.Mocked<TypedVikunjaClient>;
 
@@ -43,10 +44,7 @@ describe('TaskCreationService', () => {
         ['john', 101],
         ['jane', 102],
       ]),
-      projectUsers: [
-        { id: 101, username: 'john' } as User,
-        { id: 102, username: 'jane' } as User,
-      ],
+      projectUsers: [{ id: 101, username: 'john' } as User, { id: 102, username: 'jane' } as User],
     };
 
     // Setup mock task
@@ -82,10 +80,7 @@ describe('TaskCreationService', () => {
       mockClient.tasks.updateTaskLabels.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue({
         ...createdTask,
-        labels: [
-          { id: 1, title: 'urgent' } as Label,
-          { id: 2, title: 'bug' } as Label,
-        ],
+        labels: [{ id: 1, title: 'urgent' } as Label, { id: 2, title: 'bug' } as Label],
       });
       mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue({});
 
@@ -94,7 +89,7 @@ describe('TaskCreationService', () => {
         mockTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -139,7 +134,7 @@ describe('TaskCreationService', () => {
         minimalTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -163,7 +158,7 @@ describe('TaskCreationService', () => {
 
       // Act & Assert
       await expect(
-        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps)
+        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps),
       ).rejects.toThrow(MCPError);
 
       expect(isAuthenticationError).toHaveBeenCalledWith(authError);
@@ -177,12 +172,12 @@ describe('TaskCreationService', () => {
 
       // Act & Assert - Should bubble up even with catchErrors=true
       await expect(
-        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps, true)
+        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps, true),
       ).rejects.toThrow('Custom MCP error');
 
       // Act & Assert - Should also bubble up with catchErrors=false
       await expect(
-        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps, false)
+        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps, false),
       ).rejects.toThrow('Custom MCP error');
     });
 
@@ -194,7 +189,7 @@ describe('TaskCreationService', () => {
 
       // Act & Assert
       await expect(
-        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps, false)
+        taskCreationService.createTask(mockTask, 456, mockClient, mockEntityMaps, false),
       ).rejects.toThrow('API rate limit exceeded');
     });
 
@@ -210,7 +205,7 @@ describe('TaskCreationService', () => {
         mockTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -233,10 +228,7 @@ describe('TaskCreationService', () => {
       mockClient.tasks.updateTaskLabels.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue({
         ...createdTask,
-        labels: [
-          { id: 1, title: 'urgent' } as Label,
-          { id: 2, title: 'bug' } as Label,
-        ],
+        labels: [{ id: 1, title: 'urgent' } as Label, { id: 2, title: 'bug' } as Label],
       });
 
       // Act
@@ -244,7 +236,7 @@ describe('TaskCreationService', () => {
         mockTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -277,7 +269,7 @@ describe('TaskCreationService', () => {
         mockTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -305,7 +297,7 @@ describe('TaskCreationService', () => {
         mockTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -333,7 +325,7 @@ describe('TaskCreationService', () => {
         mockTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -359,10 +351,7 @@ describe('TaskCreationService', () => {
       mockClient.tasks.updateTaskLabels.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue({
         ...createdTask,
-        labels: [
-          { id: 1, title: 'urgent' } as Label,
-          { id: 2, title: 'bug' } as Label,
-        ],
+        labels: [{ id: 1, title: 'urgent' } as Label, { id: 2, title: 'bug' } as Label],
       });
 
       // Act
@@ -370,7 +359,7 @@ describe('TaskCreationService', () => {
         taskWithUnknownLabels,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -397,7 +386,7 @@ describe('TaskCreationService', () => {
         mockTask,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -428,15 +417,16 @@ describe('TaskCreationService', () => {
         taskWithoutLabels,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
       expect(result.success).toBe(true);
       expect(result.warnings).toBeUndefined();
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(123, {
-        user_ids: [101, 102],
-      });
+      // User assignment is now done via individual calls
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledTimes(2);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 101);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 102);
     });
 
     it('should handle user assignment when no users are available', async () => {
@@ -463,7 +453,7 @@ describe('TaskCreationService', () => {
         taskWithoutLabels,
         456,
         mockClient,
-        entityMapsWithNoUsers
+        entityMapsWithNoUsers,
       );
 
       // Assert
@@ -487,20 +477,21 @@ describe('TaskCreationService', () => {
       } as Task;
 
       mockClient.tasks.createTask.mockResolvedValue(createdTask);
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(new Error('User assignment failed'));
+      mockClient.tasks.assignUserToTask.mockRejectedValue(new Error('User assignment failed'));
 
       // Act
       const result = await taskCreationService.createTask(
         taskWithoutLabels,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
       expect(result.success).toBe(true);
-      expect(result.warnings).toHaveLength(1);
-      expect(result.warnings![0]).toContain('Failed to assign users: User assignment failed');
+      expect(result.warnings).toBeDefined();
+      expect(result.warnings!.length).toBeGreaterThanOrEqual(1);
+      expect(result.warnings!.some((w) => w.includes('Failed to assign users'))).toBe(true);
     });
 
     it('should handle users that are not found', async () => {
@@ -525,16 +516,17 @@ describe('TaskCreationService', () => {
         taskWithUnknownUsers,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
       expect(result.success).toBe(true);
       expect(result.warnings).toHaveLength(1);
       expect(result.warnings![0]).toContain('Users not found: unknown');
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(123, {
-        user_ids: [101, 102], // Only found users
-      });
+      // User assignment is now done via individual calls
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledTimes(2);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 101);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 102);
     });
   });
 
@@ -543,10 +535,7 @@ describe('TaskCreationService', () => {
       // Arrange
       const taskWithReminders: ImportedTask = {
         title: 'Test Task with Reminders',
-        reminders: [
-          { reminder: '2024-12-31T10:00:00Z' },
-          { reminder: '2024-11-30T09:00:00Z' },
-        ],
+        reminders: [{ reminder: '2024-12-31T10:00:00Z' }, { reminder: '2024-11-30T09:00:00Z' }],
         labels: [], // Remove labels to isolate reminder testing
         assignees: [], // Remove assignees to isolate reminder testing
       };
@@ -564,7 +553,7 @@ describe('TaskCreationService', () => {
         taskWithReminders,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -573,10 +562,7 @@ describe('TaskCreationService', () => {
       expect(result.warnings![0]).toContain('Reminders cannot be added after task creation');
       expect(logger.warn).toHaveBeenCalledWith('Reminders cannot be added after task creation', {
         taskId: 123,
-        reminders: [
-          { reminder: '2024-12-31T10:00:00Z' },
-          { reminder: '2024-11-30T09:00:00Z' },
-        ],
+        reminders: [{ reminder: '2024-12-31T10:00:00Z' }, { reminder: '2024-11-30T09:00:00Z' }],
       });
     });
   });
@@ -604,7 +590,7 @@ describe('TaskCreationService', () => {
         taskWithEmptyArrays,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -637,7 +623,7 @@ describe('TaskCreationService', () => {
         taskWithUndefined,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -672,7 +658,7 @@ describe('TaskCreationService', () => {
         taskWithInvalidRepeatMode,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
@@ -709,7 +695,7 @@ describe('TaskCreationService', () => {
         taskWithMultipleIssues,
         456,
         mockClient,
-        mockEntityMaps
+        mockEntityMaps,
       );
 
       // Assert
