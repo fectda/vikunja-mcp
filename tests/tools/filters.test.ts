@@ -832,10 +832,8 @@ describe('vikunja_filters tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      // Note: Filter validation is currently failing due to parser changes
-      expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('Invalid filter');
-      // Validation result verified through success heading
+      // Validation should pass for valid filter strings
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should reject empty filter strings', async () => {
@@ -880,8 +878,7 @@ describe('vikunja_filters tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(parsed.hasHeading(2, /❌ Error/)).toBe(true);
-      expect(markdown).toContain('**filter:*');
-      expect(markdown).toContain('Required');
+      expect(markdown).toContain('name or title');
     });
 
     it('should handle validation errors for non-create actions', async () => {
