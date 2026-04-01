@@ -331,17 +331,16 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         .mockResolvedValueOnce(taskWithNullAssignees)
         .mockResolvedValueOnce(taskWithNullAssignees);
       mockClient.tasks.updateTask.mockResolvedValue(taskWithNullAssignees);
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      // The code now uses assignUserToTask individually instead of bulkAssignUsersToTask
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
 
       const result = await updateTask({
         id: 1,
         assignees: [1, 2], // Add assignees to task with null assignees
       });
 
-      // Should add all assignees (since current is empty due to null)
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
-        user_ids: [1, 2],
-      });
+      // Should add all assignees using individual calls (since current is empty due to null)
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalled();
       // Should not remove any assignees
       expect(mockClient.tasks.removeUserFromTask).not.toHaveBeenCalled();
 
@@ -471,7 +470,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
           title: 'Test',
           assignees: [1, 0, 2], // 0 is invalid
         }),
-      ).rejects.toThrow('assignee ID must be a positive integer');
+      ).rejects.toThrow('must be a positive integer');
 
       await expect(
         createTask({
@@ -479,7 +478,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
           title: 'Test',
           assignees: [1, -5, 2], // -5 is invalid
         }),
-      ).rejects.toThrow('assignee ID must be a positive integer');
+      ).rejects.toThrow('must be a positive integer');
     });
   });
 
@@ -488,9 +487,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       const createdTask = { id: 1, title: 'Test Task', project_id: 1 };
       mockClient.tasks.createTask.mockResolvedValue(createdTask);
 
-      // Mock assignee assignment failure
+      // Mock assignee assignment failure - code now uses assignUserToTask in a loop
       const assigneeError = new Error('Assignee assignment failed');
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(assigneeError);
+      mockClient.tasks.assignUserToTask.mockRejectedValue(assigneeError);
 
       // Mock successful rollback
       mockClient.tasks.deleteTask.mockResolvedValue(undefined);

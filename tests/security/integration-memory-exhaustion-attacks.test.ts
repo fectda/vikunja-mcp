@@ -529,7 +529,8 @@ describe('Integration Memory Exhaustion Attack Tests', () => {
       for (const attack of envAttackPayloads) {
         // These should be treated as unknown parameters and ignored
         const result = await toolHandler(attack);
-        expect(result.content[0].text).toContain('"success": true');
+        // Response is now in markdown format with **success:** true
+        expect(result.content[0].text).toContain('**success:** true');
       }
 
       // Memory limits should remain intact

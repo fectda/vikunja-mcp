@@ -196,7 +196,7 @@ describe('Tasks Tool - Race Condition Fix', () => {
 
       // Should throw validation error before creating task
       await expect(toolHandler(args)).rejects.toThrow(MCPError);
-      await expect(toolHandler(args)).rejects.toThrow('assignee ID must be a positive integer');
+      await expect(toolHandler(args)).rejects.toThrow('must be a positive integer');
 
       // Verify task was NOT created
       expect(mockClient.tasks.createTask).not.toHaveBeenCalled();

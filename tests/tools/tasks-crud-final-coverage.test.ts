@@ -243,8 +243,8 @@ describe('Tasks CRUD - Final Coverage', () => {
         .mockResolvedValueOnce(taskWithAssignees); // For assignee diff calculation
       mockClient.tasks.updateTask.mockResolvedValue(taskWithAssignees);
 
-      // Mock successful addition but failed removal with non-Error object
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      // Mock successful addition but failed removal with non-Error object (code uses assignUserToTask)
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
       const nonErrorObject = { status: 500, error: 'Database connection lost' };
       mockClient.tasks.removeUserFromTask.mockRejectedValue(nonErrorObject);
 
@@ -287,7 +287,8 @@ describe('Tasks CRUD - Final Coverage', () => {
         .mockResolvedValueOnce(updatedTask); // Final fetch
       mockClient.tasks.updateTask.mockResolvedValue(updatedTask);
       mockClient.tasks.updateTaskLabels.mockResolvedValue(undefined);
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      // Code now uses assignUserToTask for each assignee
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
 
       const result = await updateTask({
         id: 1,

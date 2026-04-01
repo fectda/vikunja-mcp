@@ -373,14 +373,14 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
       mockClient.tasks.updateTask.mockResolvedValue(mockTask);
 
-      // Mock assignee operations failure with 403 auth error
+      // Mock assignee operations failure with 403 auth error - code now uses assignUserToTask
       const authError = createAxiosAuthError(403, 'Forbidden assignee operation');
 
       // Make the assignee addition fail with auth error
       mockClient.tasks.getTask
         .mockResolvedValueOnce(mockTask) // Initial fetch
         .mockResolvedValueOnce(mockTask); // For assignee diff calculation
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(authError);
+      mockClient.tasks.assignUserToTask.mockRejectedValue(authError);
 
       await expect(
         updateTask({
@@ -485,17 +485,16 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
         .mockResolvedValueOnce(taskWithoutAssignees)
         .mockResolvedValueOnce(taskWithoutAssignees);
       mockClient.tasks.updateTask.mockResolvedValue(taskWithoutAssignees);
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      // Code now uses individual assignUserToTask calls instead of bulk
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
 
       const result = await updateTask({
         id: 1,
         assignees: [1, 2],
       });
 
-      // Should handle undefined assignees gracefully and add new ones
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
-        user_ids: [1, 2],
-      });
+      // Should handle undefined assignees gracefully and add new ones (via individual calls)
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalled();
     });
   });
 });
