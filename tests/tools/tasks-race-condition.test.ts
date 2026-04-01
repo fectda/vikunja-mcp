@@ -67,7 +67,7 @@ describe('Tasks Tool - Race Condition Fix', () => {
         getProjectTasks: jest.fn(),
         createTask: jest.fn(),
         updateTaskLabels: jest.fn(),
-        bulkAssignUsersToTask: jest.fn(),
+        assignUserToTask: jest.fn(),
         getTask: jest.fn(),
         deleteTask: jest.fn(),
         updateTask: jest.fn(),
@@ -87,11 +87,11 @@ describe('Tasks Tool - Race Condition Fix', () => {
     // Capture the tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_tasks',
-      expect.any(String),  // description parameter
-      expect.any(Object),  // schema parameter
+      expect.any(String), // description parameter
+      expect.any(Object), // schema parameter
       expect.any(Function), // handler parameter
     );
-    toolHandler = mockServer.tool.mock.calls[0][3];  // Handler is 4th param (index 3)
+    toolHandler = mockServer.tool.mock.calls[0][3]; // Handler is 4th param (index 3)
   });
 
   afterEach(() => {
@@ -136,7 +136,7 @@ describe('Tasks Tool - Race Condition Fix', () => {
 
       mockClient.tasks.createTask.mockResolvedValue(createdTask);
       mockClient.tasks.updateTaskLabels.mockResolvedValue({});
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(new Error('User assignment failed'));
+      mockClient.tasks.assignUserToTask.mockRejectedValue(new Error('User assignment failed'));
 
       const args = {
         subcommand: 'create',
@@ -217,7 +217,7 @@ describe('Tasks Tool - Race Condition Fix', () => {
 
       mockClient.tasks.createTask.mockResolvedValue(createdTask);
       mockClient.tasks.updateTaskLabels.mockResolvedValue({});
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue({});
+      mockClient.tasks.assignUserToTask.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue(completeTask);
 
       const args = {
@@ -232,7 +232,7 @@ describe('Tasks Tool - Race Condition Fix', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('create-task');
       expect(markdown).toContain('Task created successfully');
 
