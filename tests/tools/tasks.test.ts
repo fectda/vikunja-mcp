@@ -22,8 +22,6 @@ import { getClientFromContext } from '../../src/client';
 import {
   expectAorpSuccess,
   expectAorpError,
-  getAorpData,
-  getAorpMetadata,
 } from '../utils/aorp-test-helpers';
 import { parseMarkdown } from '../utils/markdown';
 
@@ -129,7 +127,7 @@ describe('Tasks Tool', () => {
         updateTaskLabels: jest.fn(),
         assignUserToTask: jest.fn(),
         removeUserFromTask: jest.fn(),
-        bulkAssignUsersToTask: jest.fn(),
+        assignUserToTask: jest.fn(),
         bulkUpdateTasks: jest.fn(),
         addLabelToTask: jest.fn(),
         removeLabelFromTask: jest.fn(),
@@ -395,7 +393,7 @@ describe('Tasks Tool', () => {
       mockClient.tasks.createTask.mockResolvedValue({ ...mockTask, id: 1 });
       mockClient.tasks.getTask.mockResolvedValue({ ...mockTask, ...fullTask });
       mockClient.tasks.updateTaskLabels.mockResolvedValue(undefined);
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
 
       await callTool('create', fullTask);
 
@@ -476,7 +474,7 @@ describe('Tasks Tool', () => {
 
       mockClient.tasks.createTask.mockResolvedValue({ ...mockTask, id: 1 });
       mockClient.tasks.updateTaskLabels.mockResolvedValue(undefined);
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(
+      mockClient.tasks.assignUserToTask.mockRejectedValue(
         new Error('Assignee assignment failed'),
       );
       mockClient.tasks.deleteTask.mockRejectedValue(new Error('Delete failed'));
@@ -778,8 +776,8 @@ describe('Tasks Tool', () => {
         assignees: [1, 2, 3],
       });
 
-      // Should call bulkAssignUsersToTask for new user (3)
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
+      // Should call assignUserToTask for new user (3)
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(1, {
         user_ids: [3],
       });
 
@@ -909,7 +907,7 @@ describe('Tasks Tool', () => {
       });
 
       // Should add both assignees
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(1, {
         user_ids: [1, 2],
       });
     });
@@ -1046,7 +1044,7 @@ describe('Tasks Tool', () => {
     it('should assign users to a task', async () => {
       const updatedTask = { ...mockTask, assignees: [mockUser] };
 
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
       mockClient.tasks.getTask.mockResolvedValue(updatedTask);
 
       const result = await callTool('assign', {
@@ -1054,7 +1052,7 @@ describe('Tasks Tool', () => {
         assignees: [1],
       });
 
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(1, {
         user_ids: [1],
       });
 
@@ -1066,7 +1064,7 @@ describe('Tasks Tool', () => {
     });
 
     it('should handle bulk assign errors', async () => {
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(new Error('Failed to assign'));
+      mockClient.tasks.assignUserToTask.mockRejectedValue(new Error('Failed to assign'));
 
       await expect(
         callTool('assign', {
@@ -1077,7 +1075,7 @@ describe('Tasks Tool', () => {
     });
 
     it('should handle non-Error API errors in assign', async () => {
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(null);
+      mockClient.tasks.assignUserToTask.mockRejectedValue(null);
 
       await expect(
         callTool('assign', {
@@ -1093,7 +1091,7 @@ describe('Tasks Tool', () => {
         assignees: [mockUser, { ...mockUser, id: 2, username: 'user2' }],
       };
 
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
       mockClient.tasks.getTask.mockResolvedValue(taskWithMultipleAssignees);
 
       const result = await callTool('assign', {
@@ -1101,7 +1099,7 @@ describe('Tasks Tool', () => {
         assignees: [1, 2],
       });
 
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(1, {
         user_ids: [1, 2],
       });
 
@@ -1456,7 +1454,7 @@ describe('Tasks Tool', () => {
         Promise.resolve({ ...mockTask, id, title: `Task ${id}` }),
       );
       mockClient.tasks.removeUserFromTask = jest.fn().mockResolvedValue({});
-      mockClient.tasks.bulkAssignUsersToTask = jest.fn().mockResolvedValue({});
+      mockClient.tasks.assignUserToTask = jest.fn().mockResolvedValue({});
       mockClient.tasks.updateTaskLabels = jest.fn().mockResolvedValue({});
     });
 
@@ -2204,7 +2202,7 @@ describe('Tasks Tool', () => {
       mockClient.tasks.getTask
         .mockResolvedValueOnce({ ...mockTask, id: 1, assignees: [] })
         .mockResolvedValueOnce({ ...mockTask, id: 1, assignees: [] });
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(new Error('Invalid user ID'));
+      mockClient.tasks.assignUserToTask.mockRejectedValue(new Error('Invalid user ID'));
 
       const result = await callTool('bulk-update', {
         taskIds: [1],
@@ -2584,7 +2582,7 @@ describe('Tasks Tool', () => {
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(1, {
         label_ids: [1, 2],
       });
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(1, {
         user_ids: [3, 4],
       });
 
@@ -2702,7 +2700,7 @@ describe('Tasks Tool', () => {
       });
 
       // Mock assignee operation to fail with non-auth error
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(new Error('Invalid user ID'));
+      mockClient.tasks.assignUserToTask.mockRejectedValue(new Error('Invalid user ID'));
       mockClient.tasks.deleteTask.mockResolvedValue(undefined);
 
       await expect(
