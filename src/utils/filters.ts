@@ -26,7 +26,7 @@ const MAX_VALUE_LENGTH = 200;
 // Disallow shell injection and XSS characters like ; | $ ` { } [ ] ~ ^ $
 // NOTE: < > = ( ) & | are needed for filter comparisons and logical operators
 // Using Unicode property escapes to support international characters
-const ALLOWED_CHARS = /^[\t\n\r a-zA-Z0-9_.\-="'!,@#%*+?:<>()\/\\|&\p{L}]+$/u;
+const ALLOWED_CHARS = /^[\t\n\r a-zA-Z0-9_.\-="'!,@#%*+?:<>()/\\|&\p{L}]+$/u;
 
 /**
  * Pre-compiled optimized regex patterns for performance and security

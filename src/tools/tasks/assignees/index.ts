@@ -53,7 +53,7 @@ export async function assignUsers(args: {
 
     throw new MCPError(
       ErrorCode.API_ERROR,
-      `Failed to assign users to task: ${error instanceof Error ? (error.message ?? 'Unknown error') : String(error ?? 'Unknown error')}`,
+      `Failed to assign users to task: ${error instanceof Error ? error.message || 'Unknown error' : String(error)}`,
     );
   }
 }
@@ -101,7 +101,7 @@ export async function unassignUsers(args: {
 
     throw new MCPError(
       ErrorCode.API_ERROR,
-      `Failed to remove users from task: ${error instanceof Error ? (error.message ?? 'Unknown error') : String(error ?? 'Unknown error')}`,
+      `Failed to remove users from task: ${error instanceof Error ? error.message || 'Unknown error' : String(error)}`,
     );
   }
 }
