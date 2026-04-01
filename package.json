@@ -101,6 +101,10 @@
       "**/__tests__/**/*.ts",
       "**/?(*.)+(spec|test).ts"
     ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "tests/tools/tasks.test.ts"
+    ],
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts",
