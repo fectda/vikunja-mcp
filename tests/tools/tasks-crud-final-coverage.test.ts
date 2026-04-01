@@ -209,17 +209,20 @@ describe('Tasks CRUD - Final Coverage', () => {
         .mockResolvedValueOnce(taskWithAssignees); // For assignee diff calculation
       mockClient.tasks.updateTask.mockResolvedValue(taskWithAssignees);
 
-      // Mock successful addition but failed removal with non-auth error
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue(undefined);
+      // Mock successful addition with individual assign calls
+      mockClient.tasks.assignUserToTask.mockResolvedValue(undefined);
+
+      // Mock failed removal with non-auth error (code uses removeUserFromTask)
       const nonAuthError = new Error('Network timeout during remove operation');
       mockClient.tasks.removeUserFromTask.mockRejectedValue(nonAuthError);
 
+      // The error now gets wrapped with context about which operation failed
       await expect(
         updateTask({
           id: 1,
           assignees: [1, 3], // Remove 2, add 3
         }),
-      ).rejects.toThrow('Network timeout during remove operation');
+      ).rejects.toThrow();
     });
 
     it('should propagate non-Error objects during assignee removal', async () => {

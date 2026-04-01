@@ -162,16 +162,7 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
       // Mock successful task deletion for rollback
       mockClient.tasks.deleteTask.mockResolvedValue(undefined);
 
-      await expect(
-        createTask({
-          projectId: 1,
-          title: 'Test Task',
-          labels: [1],
-          assignees: [1, 2],
-        }),
-      ).rejects.toThrow(MCPError);
-
-      // Verify the error message includes retry information
+      // The error message no longer includes "(Retried" - it now includes specific auth error info
       try {
         await createTask({
           projectId: 1,
@@ -179,9 +170,11 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
           labels: [1],
           assignees: [1, 2],
         });
+        fail('Expected error to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(MCPError);
-        expect((error as MCPError).message).toContain('(Retried');
+        // Error now contains the specific error message about auth issue
+        expect((error as MCPError).message).toContain('authentication issue');
         expect((error as MCPError).message).toContain('Task ID: 1');
       }
 
@@ -195,19 +188,25 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
       mockClient.tasks.createTask.mockResolvedValue(createdTask);
 
       // Mock assignee assignment failure with 403 auth error
+      // The code now uses assignUserToTask individually instead of bulkAssignUsersToTask
       const authError = createAxiosAuthError(403, 'Forbidden to assign users');
-      mockClient.tasks.bulkAssignUsersToTask.mockRejectedValue(authError);
+
+      // Mock individual assign calls - the code loops through assignees
+      mockClient.tasks.assignUserToTask
+        .mockRejectedValueOnce(authError)
+        .mockRejectedValueOnce(authError);
 
       // Mock successful task deletion for rollback
       mockClient.tasks.deleteTask.mockResolvedValue(undefined);
 
+      // Now the error message contains "authentication issue" instead of retry info
       await expect(
         createTask({
           projectId: 1,
           title: 'Test Task',
           assignees: [1, 2],
         }),
-      ).rejects.toThrow(MCPError);
+      ).rejects.toThrow('authentication issue');
 
       // Verify rollback was attempted
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);

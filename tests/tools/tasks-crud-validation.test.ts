@@ -192,12 +192,13 @@ describe('Tasks CRUD - Validation Coverage', () => {
       // Mock updateTask to throw a non-Error object
       mockClient.tasks.updateTask.mockRejectedValue('Update service unavailable');
 
+      // SecureErrorHandler now preserves non-Error strings instead of converting to "Unknown error"
       await expect(
         updateTask({
           id: 1,
           title: 'Updated Title',
         }),
-      ).rejects.toThrow('Failed to update task: Unknown error');
+      ).rejects.toThrow('Failed to update task: Update service unavailable');
     });
 
     it('should handle generic Error in deleteTask (line 459)', async () => {
