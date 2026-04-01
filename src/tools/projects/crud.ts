@@ -408,13 +408,11 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
       validationUpdateData.hexColor = hexColor;
     }
 
-    const resolvedParentProjectId =
-      parentProjectId ??
-      (currentProject && typeof currentProject.parent_project_id === 'number'
-        ? currentProject.parent_project_id
-        : undefined);
-    if (resolvedParentProjectId !== undefined) {
-      validationUpdateData.parentProjectId = resolvedParentProjectId;
+    // Only set parentProjectId in validation if user explicitly provided it
+    // Don't auto-resolve from current project - that causes validation errors
+    // when parent_project_id is 0 (root project in Vikunja)
+    if (parentProjectId !== undefined) {
+      validationUpdateData.parentProjectId = parentProjectId;
     }
 
     validateProjectData(validationUpdateData, allProjects);
@@ -437,8 +435,10 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
     if (description !== undefined) {
       updateData.description = description.trim();
     }
-    if (resolvedParentProjectId !== undefined) {
-      updateData.parent_project_id = resolvedParentProjectId;
+    // Only include parent_project_id in API call if explicitly provided by user
+    // This avoids sending parent_project_id: 0 when not intended
+    if (parentProjectId !== undefined) {
+      updateData.parent_project_id = parentProjectId;
     }
     if (isArchived !== undefined) {
       updateData.is_archived = isArchived;

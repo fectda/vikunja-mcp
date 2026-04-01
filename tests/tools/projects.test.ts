@@ -454,6 +454,47 @@ describe('Projects Tool', () => {
       expect(markdown).toMatch(/update[_\\]+project/);
     });
 
+    it('should update a root project (parent_project_id: 0) without validation error', async () => {
+      // This test reproduces the bug: updating a root project (parent_project_id: 0)
+      // should not fail with "parentProjectId must be a positive integer"
+      const rootProject = { ...mockProject, parent_project_id: 0 };
+      const updatedProject = { ...rootProject, title: 'New Title' };
+      mockClient.projects.getProject.mockResolvedValue(rootProject);
+      mockClient.projects.updateProject.mockResolvedValue(updatedProject);
+
+      const result = await callTool('update', {
+        id: 1,
+        title: 'New Title',
+      });
+
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
+        title: 'New Title',
+      });
+      expect(result.content[0].type).toBe('text');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Project "New Title" updated successfully');
+    });
+
+    it('should update a project with parent (not root) without validation error', async () => {
+      // Test updating a project that already has a parent - should not fail
+      const childProject = { ...mockProject, parent_project_id: 10 };
+      const updatedProject = { ...childProject, title: 'Updated Child' };
+      mockClient.projects.getProject.mockResolvedValue(childProject);
+      mockClient.projects.updateProject.mockResolvedValue(updatedProject);
+
+      const result = await callTool('update', {
+        id: 1,
+        title: 'Updated Child',
+      });
+
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
+        title: 'Updated Child',
+      });
+      expect(result.content[0].type).toBe('text');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Project "Updated Child" updated successfully');
+    });
+
     it('should require project ID', async () => {
       await expect(callTool('update', { title: 'New Title' })).rejects.toThrow(
         'Project ID is required',
