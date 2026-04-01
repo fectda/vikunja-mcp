@@ -33,6 +33,43 @@ describe('Assignee operations', () => {
   });
 
   describe('assignUsers', () => {
+    it('should assign users using individual assignUserToTask calls (not bulk)', async () => {
+      // This test verifies the fix for the regression bug
+      // The bulk endpoint doesn't persist with JWT - must use individual calls
+      const mockTask = {
+        id: 123,
+        title: 'Test Task',
+        assignees: [
+          { id: 1, name: 'User 1' },
+          { id: 2, name: 'User 2' },
+        ],
+      };
+
+      mockClient.tasks.assignUserToTask.mockResolvedValue({});
+      mockClient.tasks.getTask.mockResolvedValue(mockTask);
+
+      const result = await assignUsers({
+        id: 123,
+        assignees: [1, 2],
+      });
+
+      // BUG: Currently uses bulkAssignUsersToTask which doesn't persist with JWT
+      // Should use individual assignUserToTask calls instead
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledTimes(2);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 1);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 2);
+
+      // bulkAssignUsersToTask should NOT be called
+      expect(mockClient.tasks.bulkAssignUsersToTask).not.toHaveBeenCalled();
+
+      expect(mockClient.tasks.getTask).toHaveBeenCalledWith(123);
+
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('assign');
+      expect(markdown).toContain('Users assigned to task successfully');
+    });
+
     it('should assign users to task successfully', async () => {
       const mockTask = {
         id: 123,
@@ -43,7 +80,8 @@ describe('Assignee operations', () => {
         ],
       };
 
-      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue({});
+      // Now uses individual assignUserToTask calls (fixed from bulk)
+      mockClient.tasks.assignUserToTask.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await assignUsers({
@@ -51,9 +89,10 @@ describe('Assignee operations', () => {
         assignees: [1, 2],
       });
 
-      expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(123, {
-        user_ids: [1, 2],
-      });
+      // Verify individual calls are used (not bulk)
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledTimes(2);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 1);
+      expect(mockClient.tasks.assignUserToTask).toHaveBeenCalledWith(123, 2);
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(123);
 
       const markdown = result.content[0].text;

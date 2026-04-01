@@ -15,45 +15,49 @@ import { AUTH_ERROR_MESSAGES } from '../constants';
  */
 export const AssigneeOperationsService = {
   /**
-   * Assign multiple users to a task
-   * Uses bulk endpoint for efficiency
+   * Assign multiple users to a task using individual API calls.
+   * Individual calls work reliably with JWT auth, unlike the bulk endpoint.
+   * The bulk endpoint (`bulkAssignUsersToTask`) doesn't persist with JWT.
    */
   async assignUsersToTask(taskId: number, assigneeIds: number[]): Promise<void> {
     const client = await getClientFromContext();
 
-    try {
-      // Use bulk endpoint - more efficient than individual calls
-      await withRetry(() => client.tasks.bulkAssignUsersToTask(taskId, { user_ids: assigneeIds }), {
-        ...RETRY_CONFIG.AUTH_ERRORS,
-        shouldRetry: (error) => isAuthenticationError(error),
-      });
-    } catch (assigneeError) {
-      // Check for specific Vikunja error codes
-      const errorObj = assigneeError as { code?: number; message?: string };
+    // Use individual assignUserToTask calls instead of bulk endpoint
+    // The bulk endpoint doesn't persist with JWT - this is a known Vikunja issue
+    for (const userId of assigneeIds) {
+      try {
+        await withRetry(() => client.tasks.assignUserToTask(taskId, userId), {
+          ...RETRY_CONFIG.AUTH_ERRORS,
+          shouldRetry: (error) => isAuthenticationError(error),
+        });
+      } catch (assigneeError) {
+        // Check for specific Vikunja error codes
+        const errorObj = assigneeError as { code?: number; message?: string };
 
-      if (errorObj.code === 7003) {
-        throw new MCPError(
-          ErrorCode.PERMISSION_DENIED,
-          `Cannot assign users: One or more users do not have access to the project.`,
-        );
-      }
+        if (errorObj.code === 7003) {
+          throw new MCPError(
+            ErrorCode.PERMISSION_DENIED,
+            `Cannot assign user ${userId}: User does not have access to the project.`,
+          );
+        }
 
-      if (errorObj.code === 1005) {
-        throw new MCPError(
-          ErrorCode.NOT_FOUND,
-          `Cannot assign users: One or more users do not exist.`,
-        );
-      }
+        if (errorObj.code === 1005) {
+          throw new MCPError(
+            ErrorCode.NOT_FOUND,
+            `Cannot assign user ${userId}: User does not exist.`,
+          );
+        }
 
-      // Check if it's an auth error after retries
-      if (isAuthenticationError(assigneeError)) {
-        throw new MCPError(
-          ErrorCode.API_ERROR,
-          `Assignee operation failed due to authentication issue. Task ID: ${taskId}. ` +
-            `Please verify your API token has permission to assign users.`,
-        );
+        // Check if it's an auth error after retries
+        if (isAuthenticationError(assigneeError)) {
+          throw new MCPError(
+            ErrorCode.API_ERROR,
+            `Assignee operation failed due to authentication issue. Task ID: ${taskId}, User ID: ${userId}. ` +
+              `Please verify your API token has permission to assign users.`,
+          );
+        }
+        throw assigneeError;
       }
-      throw assigneeError;
     }
   },
 
