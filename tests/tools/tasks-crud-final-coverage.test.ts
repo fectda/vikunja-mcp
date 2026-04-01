@@ -39,7 +39,7 @@ describe('Tasks CRUD - Final Coverage', () => {
         updateTask: jest.fn(),
         deleteTask: jest.fn(),
         updateTaskLabels: jest.fn(),
-        bulkAssignUsersToTask: jest.fn(),
+        assignUserToTask: jest.fn(),
         removeUserFromTask: jest.fn(),
       },
     } as any;
@@ -66,7 +66,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('get-task');
       expect(markdown).toContain('Retrieved task "Test Task Title"');
       expect(markdown).toContain('**taskId:**');
@@ -91,7 +91,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Retrieved task "undefined"');
       expect(markdown).toContain('**taskId:**');
     });
@@ -112,7 +112,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Retrieved task "null"');
       expect(markdown).toContain('**taskId:**');
     });
@@ -152,7 +152,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('dueDate');
       expect(markdown).toContain('priority');
     });
@@ -184,7 +184,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // For unchanged fields, they might not appear in affectedFields section
       // but the operation should still succeed
     });
@@ -218,7 +218,7 @@ describe('Tasks CRUD - Final Coverage', () => {
         updateTask({
           id: 1,
           assignees: [1, 3], // Remove 2, add 3
-        })
+        }),
       ).rejects.toThrow('Network timeout during remove operation');
     });
 
@@ -249,7 +249,7 @@ describe('Tasks CRUD - Final Coverage', () => {
         updateTask({
           id: 1,
           assignees: [1, 3], // Remove 2, add 3
-        })
+        }),
       ).rejects.toThrow('Failed to update task: Unknown error');
     });
   });
@@ -302,7 +302,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       // Verify all affected fields are mentioned in the markdown output
       expect(markdown).toContain('title');
       expect(markdown).toContain('description');
