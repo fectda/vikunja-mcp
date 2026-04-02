@@ -23,7 +23,11 @@ interface TeamListParams {
 
 // Use shared validateAndConvertId from utils/validation
 
-export function registerTeamsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerTeamsTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   server.tool(
     'vikunja_teams',
     'Manage teams and team memberships for collaborative project management',
@@ -54,11 +58,10 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
         );
       }
 
-      const client = await getClientFromContext() as TypedVikunjaClient;
+      const client = (await getClientFromContext()) as TypedVikunjaClient;
       const subcommand = args.subcommand;
 
       try {
-
         switch (subcommand) {
           case 'list': {
             const params: TeamListParams = {};
@@ -103,7 +106,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               'create-team',
               `Team "${team.name}" created successfully`,
               { team },
-              { affectedFields: Object.keys(teamData).filter(key => typeof key === 'string') },
+              { affectedFields: Object.keys(teamData).filter((key) => typeof key === 'string') },
             );
 
             return {
@@ -139,7 +142,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                 { statusCode: response.status, message: errorText },
                 'get team',
                 teamId,
-                `Failed to get team ${teamId}: ${errorText}`
+                `Failed to get team ${teamId}: ${errorText}`,
               );
             }
 
@@ -197,7 +200,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                 { statusCode: response.status, message: errorText },
                 'update team',
                 teamId,
-                `Failed to update team ${teamId}: ${errorText}`
+                `Failed to update team ${teamId}: ${errorText}`,
               );
             }
 
@@ -245,7 +248,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                   { statusCode: response.status, message: errorText },
                   'leave team',
                   teamId,
-                  `Failed to leave team ${teamId}: ${errorText}`
+                  `Failed to leave team ${teamId}: ${errorText}`,
                 );
               }
 
@@ -314,7 +317,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                     { statusCode: response.status, message: errorText },
                     'list team members',
                     teamId,
-                    `Failed to list members for team ${teamId}: ${errorText}`
+                    `Failed to list members for team ${teamId}: ${errorText}`,
                   );
                 }
 
@@ -322,7 +325,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
 
                 const standardResponse = createStandardResponse(
                   'list-team-members',
-                  `Retrieved ${Array.isArray(members) ? members.length : 1} member${(!Array.isArray(members) || members.length !== 1) ? 's' : ''}`,
+                  `Retrieved ${Array.isArray(members) ? members.length : 1} member${!Array.isArray(members) || members.length !== 1 ? 's' : ''}`,
                   { members: Array.isArray(members) ? members : [members] },
                   { teamId, count: Array.isArray(members) ? members.length : 1 },
                 );
@@ -345,8 +348,9 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                 const userId = validateAndConvertId(args.userId, 'userId');
 
                 // Make direct API call to add member to team
-                const memberData: { username: string; admin?: boolean } = {
-                  username: String(userId),
+                // API accepts either user_id (integer) or username (string)
+                const memberData: { user_id: number; admin?: boolean } = {
+                  user_id: userId,
                 };
                 if (args.admin !== undefined) memberData.admin = args.admin;
 
@@ -365,7 +369,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                     { statusCode: response.status, message: errorText },
                     'add team member',
                     teamId,
-                    `Failed to add user ${userId} to team ${teamId}: ${errorText}`
+                    `Failed to add user ${userId} to team ${teamId}: ${errorText}`,
                   );
                 }
 
@@ -396,13 +400,16 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                 const userId = validateAndConvertId(args.userId, 'userId');
 
                 // Make direct API call to remove member from team
-                const response = await fetch(`${session.apiUrl}/teams/${teamId}/members/${userId}`, {
-                  method: 'DELETE',
-                  headers: {
-                    Authorization: `Bearer ${session.apiToken}`,
-                    'Content-Type': 'application/json',
+                const response = await fetch(
+                  `${session.apiUrl}/teams/${teamId}/members/${userId}`,
+                  {
+                    method: 'DELETE',
+                    headers: {
+                      Authorization: `Bearer ${session.apiToken}`,
+                      'Content-Type': 'application/json',
+                    },
                   },
-                });
+                );
 
                 if (!response.ok) {
                   const errorText = await response.text();
@@ -410,7 +417,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                     { statusCode: response.status, message: errorText },
                     'remove team member',
                     teamId,
-                    `Failed to remove user ${userId} from team ${teamId}: ${errorText}`
+                    `Failed to remove user ${userId} from team ${teamId}: ${errorText}`,
                   );
                 }
 
@@ -439,25 +446,32 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                 }
 
                 if (args.admin === undefined) {
-                  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Admin flag is required for updating member');
+                  throw new MCPError(
+                    ErrorCode.VALIDATION_ERROR,
+                    'Admin flag is required for updating member',
+                  );
                 }
 
                 const userId = validateAndConvertId(args.userId, 'userId');
 
                 // Make direct API call to update member (using PUT with updated admin flag)
+                // API accepts either user_id (integer) or username (string)
                 const memberData = {
-                  username: String(userId),
+                  user_id: userId,
                   admin: args.admin,
                 };
 
-                const response = await fetch(`${session.apiUrl}/teams/${teamId}/members/${userId}`, {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${session.apiToken}`,
-                    'Content-Type': 'application/json',
+                const response = await fetch(
+                  `${session.apiUrl}/teams/${teamId}/members/${userId}`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${session.apiToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(memberData),
                   },
-                  body: JSON.stringify(memberData),
-                });
+                );
 
                 if (!response.ok) {
                   const errorText = await response.text();
@@ -465,7 +479,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                     { statusCode: response.status, message: errorText },
                     'update team member',
                     teamId,
-                    `Failed to update user ${userId} in team ${teamId}: ${errorText}`
+                    `Failed to update user ${userId} in team ${teamId}: ${errorText}`,
                   );
                 }
 
@@ -482,7 +496,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                   content: [
                     {
                       type: 'text',
-                  text: formatAorpAsMarkdown(standardResponse),
+                      text: formatAorpAsMarkdown(standardResponse),
                     },
                   ],
                 };

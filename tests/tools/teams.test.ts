@@ -610,7 +610,7 @@ describe('Teams Tool', () => {
             Authorization: 'Bearer test-token',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ username: '3' }),
+          body: JSON.stringify({ user_id: 3 }),
         });
 
         const markdown = result.content[0].text;
@@ -639,7 +639,7 @@ describe('Teams Tool', () => {
             Authorization: 'Bearer test-token',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ username: '3', admin: true }),
+          body: JSON.stringify({ user_id: 3, admin: true }),
         });
 
         const markdown = result.content[0].text;
@@ -741,7 +741,7 @@ describe('Teams Tool', () => {
             Authorization: 'Bearer test-token',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ username: '2', admin: true }),
+          body: JSON.stringify({ user_id: 2, admin: true }),
         });
 
         const markdown = result.content[0].text;
@@ -770,7 +770,7 @@ describe('Teams Tool', () => {
             Authorization: 'Bearer test-token',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ username: '1', admin: false }),
+          body: JSON.stringify({ user_id: 1, admin: false }),
         });
 
         const markdown = result.content[0].text;
