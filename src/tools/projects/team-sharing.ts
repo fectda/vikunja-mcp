@@ -77,6 +77,10 @@ function normalizeRight(right: 'read' | 'write' | 'admin' | 0 | 1 | 2): number {
 
 /**
  * Share a project with a team (or update existing share)
+ *
+ * Vikunja API requires TWO steps:
+ * 1. PUT /projects/{id}/teams with {team_id: id} -> creates share (default permission=0/read)
+ * 2. POST /projects/{id}/teams/{teamId} with {permission: right} -> updates to desired permission
  */
 async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise<McpResponse> {
   const { projectId, teamId, right } = args;
@@ -97,24 +101,25 @@ async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise
     await getClientFromContext();
     const session = authManager.getSession();
 
-    // Vikunja API expects string for right: "read", "write", or "admin", not numeric
+    // Vikunja API expects string for permission: "read", "write", or "admin", not numeric
     const rightString =
       typeof right === 'string' ? right.toLowerCase() : ['read', 'write', 'admin'][numericRight];
 
-    const response = await fetch(`${session.apiUrl}/projects/${projectId}/teams/${teamId}`, {
+    // STEP 1: Create share with team_id in body (NOT in URL)
+    const createResponse = await fetch(`${session.apiUrl}/projects/${projectId}/teams`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${session.apiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ right: rightString }),
+      body: JSON.stringify({ team_id: teamId }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
 
       // Handle specific error codes
-      if (response.status === 404) {
+      if (createResponse.status === 404) {
         // Check if it's project or team not found
         const projectResponse = await fetch(`${session.apiUrl}/projects/${projectId}`, {
           method: 'GET',
@@ -127,7 +132,7 @@ async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise
         throw new MCPError(ErrorCode.NOT_FOUND, `Team with ID ${teamId} not found`);
       }
 
-      if (response.status === 403) {
+      if (createResponse.status === 403) {
         throw new MCPError(
           ErrorCode.PERMISSION_DENIED,
           `You don't have permission to share project ${projectId}`,
@@ -135,17 +140,48 @@ async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise
       }
 
       throw new MCPError(ErrorCode.API_ERROR, `Failed to share project with team: ${errorText}`, {
-        statusCode: response.status,
-        endpoint: `/projects/${projectId}/teams/${teamId}`,
+        statusCode: createResponse.status,
+        endpoint: `/projects/${projectId}/teams`,
       });
     }
 
-    const result = (await response.json()) as { right: number; message?: string };
+    const createResult = (await createResponse.json()) as { right: number; message?: string };
+
+    // STEP 2: If right is not "read" (0), update the permission
+    // Default permission after creation is 0 (read), so skip if user wants read
+    if (numericRight !== 0) {
+      const updateResponse = await fetch(
+        `${session.apiUrl}/projects/${projectId}/teams/${teamId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.apiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ permission: rightString }),
+        },
+      );
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        throw new MCPError(
+          ErrorCode.API_ERROR,
+          `Failed to update team share permissions: ${errorText}`,
+          {
+            statusCode: updateResponse.status,
+            endpoint: `/projects/${projectId}/teams/${teamId}`,
+          },
+        );
+      }
+
+      const updateResult = (await updateResponse.json()) as { right: number };
+      createResult.right = updateResult.right;
+    }
 
     const standardResponse = createStandardResponse(
       'share-team',
       `Project shared with team successfully`,
-      { right: result.right },
+      { right: createResult.right },
       { projectId, teamId, right: numericRight },
     );
 
@@ -311,6 +347,8 @@ async function getTeamShare(
 
 /**
  * Update team share permissions
+ *
+ * For existing shares, use POST with "permission" field (NOT PUT with "right")
  */
 async function updateTeamShare(
   args: UpdateTeamShareArgs,
@@ -333,17 +371,18 @@ async function updateTeamShare(
     await getClientFromContext();
     const session = authManager.getSession();
 
-    // Vikunja API expects string for right: "read", "write", or "admin", not numeric
+    // Vikunja API expects string for permission: "read", "write", or "admin", not numeric
     const rightString =
       typeof right === 'string' ? right.toLowerCase() : ['read', 'write', 'admin'][numericRight];
 
+    // Use POST (not PUT) with "permission" field (not "right")
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/teams/${teamId}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${session.apiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ right: rightString }),
+      body: JSON.stringify({ permission: rightString }),
     });
 
     if (!response.ok) {

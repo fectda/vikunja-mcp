@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../../src/auth/AuthManager';
 import { registerProjectTeamSharingTool } from '../../../src/tools/projects/team-sharing';
-import type { User } from 'node-vikunja';
 
 import { getClientFromContext } from '../../../src/client';
 
@@ -143,58 +142,233 @@ describe('Team Sharing Tool', () => {
     });
   });
 
-  describe('API request format', () => {
-    it('should send right as string "admin" not number 2', async () => {
-      // This test verifies the fix: API expects "admin" not 2
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({ id: 1, right: 'admin', team_id: 5 }),
-      } as any);
+  describe('API request format - two-step flow', () => {
+    it('should send admin permission correctly with two-step flow', async () => {
+      // With the fix:
+      // Step 1: PUT /projects/{id}/teams with {team_id: id}
+      // Step 2: POST /projects/{id}/teams/{teamId} with {permission: 'admin'}
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 2 }),
+        });
 
       await callTool('share-team', { projectId: 1, teamId: 5, right: 'admin' });
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Step 1: Create share
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        'https://vikunja.example.com/api/v1/projects/1/teams',
         expect.objectContaining({
           method: 'PUT',
-          body: JSON.stringify({ right: 'admin' }),
+          body: JSON.stringify({ team_id: 5 }),
+        }),
+      );
+
+      // Step 2: Update permission
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ permission: 'admin' }),
         }),
       );
     });
 
-    it('should send right as string "write" when numeric 1 is provided', async () => {
-      // Test that numeric right is converted to string
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({ id: 1, right: 'write', team_id: 5 }),
-      } as any);
+    it('should send write permission correctly with two-step flow', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 1 }),
+        });
 
       await callTool('share-team', { projectId: 1, teamId: 5, right: 1 });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Step 2 should use 'permission' with string value
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
         'https://vikunja.example.com/api/v1/projects/1/teams/5',
         expect.objectContaining({
-          method: 'PUT',
-          body: JSON.stringify({ right: 'write' }),
+          method: 'POST',
+          body: JSON.stringify({ permission: 'write' }),
         }),
       );
     });
 
-    it('should send right as string "read" when numeric 0 is provided', async () => {
+    it('should only call API once when right is read (0)', async () => {
+      // When right is "read" (0), no second call needed - default permission is already read
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ id: 1, right: 'read', team_id: 5 }),
+        status: 201,
+        json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
       } as any);
 
       await callTool('share-team', { projectId: 1, teamId: 5, right: 0 });
 
+      // Only 1 call needed - default permission is already read
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      // Should use /teams endpoint with team_id in body
       expect(global.fetch).toHaveBeenCalledWith(
-        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        'https://vikunja.example.com/api/v1/projects/1/teams',
         expect.objectContaining({
           method: 'PUT',
-          body: JSON.stringify({ right: 'read' }),
+          body: JSON.stringify({ team_id: 5 }),
         }),
       );
+    });
+
+    // === TDD: Tests that FAIL with buggy code, PASS after fix ===
+
+    /**
+     * Bug 1: Wrong endpoint
+     * Current: PUT /projects/{id}/teams/{teamId} (WRONG - returns 405)
+     * Correct: PUT /projects/{id}/teams with {team_id: teamId}
+     */
+    it('should use PUT /projects/{id}/teams with team_id in body', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+      } as any);
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 'read' });
+
+      // Should call /projects/1/teams (NOT /projects/1/teams/5)
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ team_id: 5 }),
+        }),
+      );
+    });
+
+    /**
+     * Bug 2: Wrong field name
+     * Current: { right: 'admin' } (WRONG - Vikunja ignores 'right')
+     * Correct: { permission: 'admin' }
+     */
+    it('should use "permission" field not "right" field in step 2', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 2 }),
+        });
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 'admin' });
+
+      // Step 2 should use 'permission' field, not 'right'
+      const secondCallBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+
+      // Should contain 'permission' field, not 'right'
+      expect(secondCallBody).toHaveProperty('permission');
+      expect(secondCallBody).not.toHaveProperty('right');
+      expect(secondCallBody.permission).toBe('admin');
+    });
+
+    /**
+     * Bug 3: Missing step 2 - update permissions
+     * After creating share, need second API call to set the desired permission
+     * Step 1: PUT /projects/{id}/teams with {team_id: id} -> creates with permission=0
+     * Step 2: POST /projects/{id}/teams/{teamId} with {permission: right} -> updates permission
+     */
+    it('should make two API calls when right is not "read" (0)', async () => {
+      // First call returns 201 (created), second returns 200 (updated)
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 2 }),
+        });
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 'admin' });
+
+      // Should have 2 fetch calls
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Step 1: Create share
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        'https://vikunja.example.com/api/v1/projects/1/teams',
+        expect.objectContaining({ method: 'PUT' }),
+      );
+
+      // Step 2: Update permission
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ permission: 'admin' }),
+        }),
+      );
+    });
+
+    it('should NOT make second API call when right is "read" (default)', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+      } as any);
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 'read' });
+
+      // Only 1 call needed - default permission is already read
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use "permission" field in step 2 API call', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 1 }),
+        });
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 'write' });
+
+      // Step 2 should use 'permission' field
+      const secondCallBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+      expect(secondCallBody).toHaveProperty('permission');
+      expect(secondCallBody.permission).toBe('write');
     });
   });
 });
