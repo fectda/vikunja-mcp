@@ -735,14 +735,17 @@ describe('Teams Tool', () => {
           admin: true,
         });
 
-        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1/members/2', {
-          method: 'POST',
-          headers: {
-            Authorization: 'Bearer test-token',
-            'Content-Type': 'application/json',
+        expect(global.fetch).toHaveBeenCalledWith(
+          'https://vikunja.example.com/teams/1/members/2/admin',
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: 'Bearer test-token',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ admin: true }),
           },
-          body: JSON.stringify({ user_id: 2, admin: true }),
-        });
+        );
 
         const markdown = result.content[0].text;
         expect(markdown).toContain('## ✅ Success');
@@ -764,14 +767,17 @@ describe('Teams Tool', () => {
           admin: false,
         });
 
-        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1/members/1', {
-          method: 'POST',
-          headers: {
-            Authorization: 'Bearer test-token',
-            'Content-Type': 'application/json',
+        expect(global.fetch).toHaveBeenCalledWith(
+          'https://vikunja.example.com/teams/1/members/1/admin',
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: 'Bearer test-token',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ admin: false }),
           },
-          body: JSON.stringify({ user_id: 1, admin: false }),
-        });
+        );
 
         const markdown = result.content[0].text;
         expect(markdown).toContain('User 1 updated in team successfully');

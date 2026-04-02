@@ -400,6 +400,8 @@ export function registerTeamsTool(
                 const userId = validateAndConvertId(args.userId, 'userId');
 
                 // Make direct API call to remove member from team
+                // Vikunja API endpoint: /teams/{id}/members/{username}
+                // Use username format as the endpoint expects username, not user ID
                 const response = await fetch(
                   `${session.apiUrl}/teams/${teamId}/members/${userId}`,
                   {
@@ -454,22 +456,17 @@ export function registerTeamsTool(
 
                 const userId = validateAndConvertId(args.userId, 'userId');
 
-                // Make direct API call to update member (using PUT with updated admin flag)
-                // API accepts either user_id (integer) or username (string)
-                const memberData = {
-                  user_id: userId,
-                  admin: args.admin,
-                };
-
+                // Make direct API call to update member admin flag
+                // Vikunja API endpoint: /teams/{id}/members/{userID}/admin
                 const response = await fetch(
-                  `${session.apiUrl}/teams/${teamId}/members/${userId}`,
+                  `${session.apiUrl}/teams/${teamId}/members/${userId}/admin`,
                   {
-                    method: 'POST',
+                    method: 'PUT',
                     headers: {
                       Authorization: `Bearer ${session.apiToken}`,
                       'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(memberData),
+                    body: JSON.stringify({ admin: args.admin }),
                   },
                 );
 
