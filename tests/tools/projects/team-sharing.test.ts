@@ -142,4 +142,59 @@ describe('Team Sharing Tool', () => {
       await expect(callTool('remove-team-share', { projectId: 1 })).rejects.toThrow('Team ID');
     });
   });
+
+  describe('API request format', () => {
+    it('should send right as string "admin" not number 2', async () => {
+      // This test verifies the fix: API expects "admin" not 2
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ id: 1, right: 'admin', team_id: 5 }),
+      } as any);
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 'admin' });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ right: 'admin' }),
+        }),
+      );
+    });
+
+    it('should send right as string "write" when numeric 1 is provided', async () => {
+      // Test that numeric right is converted to string
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ id: 1, right: 'write', team_id: 5 }),
+      } as any);
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 1 });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ right: 'write' }),
+        }),
+      );
+    });
+
+    it('should send right as string "read" when numeric 0 is provided', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ id: 1, right: 'read', team_id: 5 }),
+      } as any);
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 0 });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ right: 'read' }),
+        }),
+      );
+    });
+  });
 });

@@ -97,13 +97,17 @@ async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise
     await getClientFromContext();
     const session = authManager.getSession();
 
+    // Vikunja API expects string for right: "read", "write", or "admin", not numeric
+    const rightString =
+      typeof right === 'string' ? right.toLowerCase() : ['read', 'write', 'admin'][numericRight];
+
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/teams/${teamId}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${session.apiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ right: numericRight }),
+      body: JSON.stringify({ right: rightString }),
     });
 
     if (!response.ok) {
@@ -329,13 +333,17 @@ async function updateTeamShare(
     await getClientFromContext();
     const session = authManager.getSession();
 
+    // Vikunja API expects string for right: "read", "write", or "admin", not numeric
+    const rightString =
+      typeof right === 'string' ? right.toLowerCase() : ['read', 'write', 'admin'][numericRight];
+
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/teams/${teamId}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${session.apiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ right: numericRight }),
+      body: JSON.stringify({ right: rightString }),
     });
 
     if (!response.ok) {
@@ -498,7 +506,7 @@ export function registerProjectTeamSharingTool(
                   'Team ID is required for share-team operation',
                 );
               }
-              if (!args.right) {
+              if (args.right === undefined) {
                 throw new MCPError(
                   ErrorCode.VALIDATION_ERROR,
                   'Permission right is required for share-team operation',
@@ -562,7 +570,7 @@ export function registerProjectTeamSharingTool(
                   'Team ID is required for update-team-share operation',
                 );
               }
-              if (!args.right) {
+              if (args.right === undefined) {
                 throw new MCPError(
                   ErrorCode.VALIDATION_ERROR,
                   'Permission right is required for update-team-share operation',
