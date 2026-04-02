@@ -101,10 +101,6 @@ async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise
     await getClientFromContext();
     const session = authManager.getSession();
 
-    // Vikunja API expects string for permission: "read", "write", or "admin", not numeric
-    const rightString =
-      typeof right === 'string' ? right.toLowerCase() : ['read', 'write', 'admin'][numericRight];
-
     // STEP 1: Create share with team_id in body (NOT in URL)
     const createResponse = await fetch(`${session.apiUrl}/projects/${projectId}/teams`, {
       method: 'PUT',
@@ -158,7 +154,8 @@ async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise
             Authorization: `Bearer ${session.apiToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ permission: rightString }),
+          // Vikunja expects NUMBER for permission: 0=read, 1=write, 2=admin
+          body: JSON.stringify({ permission: numericRight }),
         },
       );
 
@@ -371,10 +368,7 @@ async function updateTeamShare(
     await getClientFromContext();
     const session = authManager.getSession();
 
-    // Vikunja API expects string for permission: "read", "write", or "admin", not numeric
-    const rightString =
-      typeof right === 'string' ? right.toLowerCase() : ['read', 'write', 'admin'][numericRight];
-
+    // Vikunja API expects NUMBER for permission: 0=read, 1=write, 2=admin
     // Use POST (not PUT) with "permission" field (not "right")
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/teams/${teamId}`, {
       method: 'POST',
@@ -382,7 +376,7 @@ async function updateTeamShare(
         Authorization: `Bearer ${session.apiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ permission: rightString }),
+      body: JSON.stringify({ permission: numericRight }),
     });
 
     if (!response.ok) {

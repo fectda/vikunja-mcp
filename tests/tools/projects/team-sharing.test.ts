@@ -146,7 +146,7 @@ describe('Team Sharing Tool', () => {
     it('should send admin permission correctly with two-step flow', async () => {
       // With the fix:
       // Step 1: PUT /projects/{id}/teams with {team_id: id}
-      // Step 2: POST /projects/{id}/teams/{teamId} with {permission: 'admin'}
+      // Step 2: POST /projects/{id}/teams/{teamId} with {permission: 2} (NUMBER)
       global.fetch = jest
         .fn()
         .mockResolvedValueOnce({
@@ -174,13 +174,13 @@ describe('Team Sharing Tool', () => {
         }),
       );
 
-      // Step 2: Update permission
+      // Step 2: Update permission - Vikunja expects NUMBER not string
       expect(global.fetch).toHaveBeenNthCalledWith(
         2,
         'https://vikunja.example.com/api/v1/projects/1/teams/5',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ permission: 'admin' }),
+          body: JSON.stringify({ permission: 2 }),
         }),
       );
     });
@@ -203,13 +203,13 @@ describe('Team Sharing Tool', () => {
 
       expect(global.fetch).toHaveBeenCalledTimes(2);
 
-      // Step 2 should use 'permission' with string value
+      // Step 2 should use NUMBER for permission (1=write)
       expect(global.fetch).toHaveBeenNthCalledWith(
         2,
         'https://vikunja.example.com/api/v1/projects/1/teams/5',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ permission: 'write' }),
+          body: JSON.stringify({ permission: 1 }),
         }),
       );
     });
@@ -265,7 +265,7 @@ describe('Team Sharing Tool', () => {
     /**
      * Bug 2: Wrong field name
      * Current: { right: 'admin' } (WRONG - Vikunja ignores 'right')
-     * Correct: { permission: 'admin' }
+     * Correct: { permission: 2 } with NUMBER
      */
     it('should use "permission" field not "right" field in step 2', async () => {
       global.fetch = jest
@@ -283,13 +283,41 @@ describe('Team Sharing Tool', () => {
 
       await callTool('share-team', { projectId: 1, teamId: 5, right: 'admin' });
 
-      // Step 2 should use 'permission' field, not 'right'
+      // Step 2 should use 'permission' field with NUMBER, not 'right'
       const secondCallBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
 
       // Should contain 'permission' field, not 'right'
       expect(secondCallBody).toHaveProperty('permission');
       expect(secondCallBody).not.toHaveProperty('right');
-      expect(secondCallBody.permission).toBe('admin');
+      expect(secondCallBody.permission).toBe(2); // NUMBER: 0=read, 1=write, 2=admin
+    });
+
+    /**
+     * Bug 1 (consolidated): permission should be NUMBER not string
+     * Vikunja API expects numeric permission: 0=read, 1=write, 2=admin
+     */
+    it('should send permission as NUMBER not string in step 2', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 2 }),
+        });
+
+      await callTool('share-team', { projectId: 1, teamId: 5, right: 'admin' });
+
+      // Step 2 should use NUMBER for permission, not string
+      const secondCallBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+
+      // permission should be a number (2=admin), not string "admin"
+      expect(secondCallBody.permission).toBe(2);
+      expect(typeof secondCallBody.permission).toBe('number');
     });
 
     /**
@@ -325,13 +353,13 @@ describe('Team Sharing Tool', () => {
         expect.objectContaining({ method: 'PUT' }),
       );
 
-      // Step 2: Update permission
+      // Step 2: Update permission - Vikunja expects NUMBER not string
       expect(global.fetch).toHaveBeenNthCalledWith(
         2,
         'https://vikunja.example.com/api/v1/projects/1/teams/5',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ permission: 'admin' }),
+          body: JSON.stringify({ permission: 2 }),
         }),
       );
     });
@@ -365,10 +393,10 @@ describe('Team Sharing Tool', () => {
 
       await callTool('share-team', { projectId: 1, teamId: 5, right: 'write' });
 
-      // Step 2 should use 'permission' field
+      // Step 2 should use 'permission' field with NUMBER
       const secondCallBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
       expect(secondCallBody).toHaveProperty('permission');
-      expect(secondCallBody.permission).toBe('write');
+      expect(secondCallBody.permission).toBe(1); // NUMBER: 0=read, 1=write, 2=admin
     });
   });
 });
