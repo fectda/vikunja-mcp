@@ -461,7 +461,7 @@ export function registerTeamsTool(
                 const response = await fetch(
                   `${session.apiUrl}/teams/${teamId}/members/${userId}/admin`,
                   {
-                    method: 'PUT',
+                    method: 'POST',
                     headers: {
                       Authorization: `Bearer ${session.apiToken}`,
                       'Content-Type': 'application/json',

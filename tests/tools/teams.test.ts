@@ -738,7 +738,7 @@ describe('Teams Tool', () => {
         expect(global.fetch).toHaveBeenCalledWith(
           'https://vikunja.example.com/teams/1/members/2/admin',
           {
-            method: 'PUT',
+            method: 'POST',
             headers: {
               Authorization: 'Bearer test-token',
               'Content-Type': 'application/json',
@@ -770,7 +770,7 @@ describe('Teams Tool', () => {
         expect(global.fetch).toHaveBeenCalledWith(
           'https://vikunja.example.com/teams/1/members/1/admin',
           {
-            method: 'PUT',
+            method: 'POST',
             headers: {
               Authorization: 'Bearer test-token',
               'Content-Type': 'application/json',
