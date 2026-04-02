@@ -79,6 +79,7 @@ export interface UpdateProjectArgs {
   id: number;
   title?: string;
   description?: string;
+  identifier?: string; // NEW: project identifier
   parentProjectId?: number;
   isArchived?: boolean;
   hexColor?: string;
@@ -349,6 +350,7 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
     id,
     title,
     description,
+    identifier,
     parentProjectId,
     isArchived,
     hexColor,
@@ -364,6 +366,7 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
     const hasUpdateFields =
       title !== undefined ||
       description !== undefined ||
+      identifier !== undefined ||
       parentProjectId !== undefined ||
       isArchived !== undefined ||
       hexColor !== undefined;
@@ -434,6 +437,9 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
     }
     if (description !== undefined) {
       updateData.description = description.trim();
+    }
+    if (identifier !== undefined) {
+      updateData.identifier = identifier;
     }
     // Only include parent_project_id in API call if explicitly provided by user
     // This avoids sending parent_project_id: 0 when not intended

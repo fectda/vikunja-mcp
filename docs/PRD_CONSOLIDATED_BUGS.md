@@ -82,6 +82,73 @@ El commit `2ff08dc` fixeó el endpoint (2 pasos), pero el campo `permission` sig
 
 ---
 
+## Feature Requests: Campos que Vikunja soporta pero el MCP no
+
+Estos campos existen en la API de Vikunja y funcionan correctamente, pero el MCP no los expone. Son features necesarias para uso completo de Vikunja via MCP.
+
+| # | Campo | Entidad | Vikunja API | MCP | Prioridad |
+|---|-------|---------|-------------|-----|-----------|
+| 1 | `identifier` | project | ✅ `PUT /projects` | ❌ No en schema | Alta |
+| 2 | `percent_done` | task | ✅ `PUT /tasks` | ❌ No en schema | Alta |
+| 3 | `start_date` | task | ✅ `PUT /tasks` | ❌ No en schema | Alta |
+| 4 | `end_date` | task | ✅ `PUT /tasks` | ❌ No en schema | Media |
+| 5 | `hex_color` | task | ✅ `PUT /tasks` | ❌ No en schema | Baja |
+| 6 | `attachments` | task | ✅ `PUT /tasks/{id}/attachments` | ❌ No hay tool | Alta |
+| 7 | `move (project_id)` | task | ✅ `POST /tasks` con `project_id` | ❌ No hay tool | Media |
+
+### Detalle por feature
+
+#### 1. project.identifier
+```javascript
+// Vikunja: PUT /projects con {"identifier": "FEAT"}
+// MCP debería agregar al schema de update:
+identifier: z.string().optional()
+```
+
+#### 2. task.percent_done
+```javascript
+// Vikunja: PUT /tasks con {"percent_done": 50}
+// MCP debería agregar al schema de update:
+percentDone: z.number().min(0).max(100).optional()
+```
+
+#### 3. task.start_date
+```javascript
+// Vikunja: PUT /tasks con {"start_date": "2026-04-01T00:00:00Z"}
+// MCP debería agregar al schema de update:
+startDate: z.string().optional()
+```
+
+#### 4. task.end_date
+```javascript
+// Vikunja: PUT /tasks con {"end_date": "2026-04-30T23:59:59Z"}
+// MCP debería agregar al schema de update:
+endDate: z.string().optional()
+```
+
+#### 5. task.hex_color
+```javascript
+// Vikunja: PUT /tasks con {"hex_color": "#ff0000"}
+// MCP debería agregar al schema de update:
+hexColor: z.string().optional()
+```
+
+#### 6. task.attachments
+```javascript
+// Vikunja: PUT /tasks/{id}/attachments (multipart/form-data)
+// MCP necesita un tool nuevo: vikunja_task_attachments
+// Operaciones: upload, list, get, delete
+```
+
+#### 7. task.move (project_id)
+```javascript
+// Vikunja: POST /tasks/{id} con {"project_id": newProjectId}
+// MCP podría agregar a vikunja_task_crud update:
+// operation: "update", id: taskId, projectId: newProjectId
+```
+
+---
+
 ## Tests que verifican estos bugs
 
 | Test | Archivo | Resultado |
@@ -104,14 +171,14 @@ El commit `2ff08dc` fixeó el endpoint (2 pasos), pero el campo `permission` sig
 | teams CRUD completo | ✅ |
 | teams members add/remove | ✅ |
 
-## Campos no soportados por el MCP (no son bugs, son features faltantes)
+## Features faltantes (Vikunja las soporta, MCP no)
 
-| Campo | Entidad | Nota |
-|-------|---------|------|
-| `identifier` | project | No hay campo en update |
-| `percent_done` | task | No hay campo en update |
-| `start_date` | task | No hay campo en update |
-| `end_date` | task | No hay campo en update |
-| `hex_color` | task | No hay campo en update |
-| `attachments` | task | No hay tool para adjuntar archivos |
-| `move (project_id)` | task | No hay tool para mover entre proyectos |
+| # | Campo | Entidad | Prioridad | Test | Estado |
+|---|-------|---------|-----------|------|--------|
+| 1 | `identifier` | project | Alta | `unsupported_fields` | ⚠️ Feature request |
+| 2 | `percent_done` | task | Alta | `unsupported_fields` | ⚠️ Feature request |
+| 3 | `start_date` | task | Alta | `unsupported_fields` | ⚠️ Feature request |
+| 4 | `end_date` | task | Media | `unsupported_fields` | ⚠️ Feature request |
+| 5 | `hex_color` | task | Baja | `unsupported_fields` | ⚠️ Feature request |
+| 6 | `attachments` | task | Alta | `unsupported_fields` | ⚠️ Feature request |
+| 7 | `move (project_id)` | task | Media | `unsupported_fields` | ⚠️ Feature request |

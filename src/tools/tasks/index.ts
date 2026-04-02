@@ -17,7 +17,6 @@ import type { TaskListingArgs } from './types/filters';
 import { createAuthRequiredError, handleFetchError } from '../../utils/error-handler';
 import { formatAorpAsMarkdown } from '../../utils/response-factory';
 
-
 // Import all operation handlers
 import { createTask, getTask, updateTask, deleteTask, createTaskResponse } from './crud';
 import { bulkCreateTasks, bulkUpdateTasks, bulkDeleteTasks } from './bulk-operations';
@@ -26,13 +25,16 @@ import { handleComment } from './comments';
 import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
 
-
 /**
  * Get session-scoped storage instance
  */
-async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+async function getSessionStorage(
+  authManager: AuthManager,
+): ReturnType<typeof storageManager.getStorage> {
   const session = authManager.getSession();
-  const sessionId = session.apiToken ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}` : 'anonymous';
+  const sessionId = session.apiToken
+    ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}`
+    : 'anonymous';
   return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
 }
 
@@ -73,7 +75,7 @@ async function listTasks(
       undefined, // useOptimizedFormat (ignored - using standard AORP)
       undefined, // useAorp (ignored - always using AORP)
       undefined, // aorpConfig (using auto-generated)
-      args.sessionId
+      args.sessionId,
     );
 
     logger.debug('Tasks tool response', { subcommand: 'list', itemCount: taskCount });
@@ -115,9 +117,9 @@ function handleAttach(): Promise<{ content: Array<{ type: 'text'; text: string }
 }
 
 export function registerTasksTool(
-  server: McpServer, 
-  authManager: AuthManager, 
-  clientFactory?: VikunjaClientFactory
+  server: McpServer,
+  authManager: AuthManager,
+  clientFactory?: VikunjaClientFactory,
 ): void {
   server.tool(
     'vikunja_tasks',
@@ -150,11 +152,19 @@ export function registerTasksTool(
       // Task creation/update fields
       title: z.string().optional(),
       description: z.string().optional(),
-      projectId: z.number().optional(),
+      projectId: z.number().optional(), // Also allows moving task to different project
       dueDate: z.string().optional(),
       priority: z.number().min(0).max(5).optional(),
       labels: z.array(z.number()).optional(),
       assignees: z.array(z.number()).optional(),
+      // NEW: Additional task fields from Vikunja API
+      percentDone: z.number().min(0).max(100).optional(), // % complete (0-100)
+      startDate: z.string().optional(), // task start date
+      endDate: z.string().optional(), // task end date
+      hexColor: z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(), // task color
       // Recurring task fields
       repeatAfter: z.number().min(0).optional(),
       repeatMode: z.enum(['day', 'week', 'month', 'year']).optional(),

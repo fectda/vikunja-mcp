@@ -22,6 +22,7 @@ export interface UpdateTaskArgs {
   id?: number;
   title?: string;
   description?: string;
+  projectId?: number; // NEW: allows moving task to different project
   dueDate?: string;
   priority?: number;
   done?: boolean;
@@ -29,6 +30,11 @@ export interface UpdateTaskArgs {
   assignees?: number[];
   repeatAfter?: number;
   repeatMode?: 'day' | 'week' | 'month' | 'year';
+  // NEW: Additional fields from Vikunja API
+  percentDone?: number; // 0-100
+  startDate?: string; // ISO date string
+  endDate?: string; // ISO date string
+  hexColor?: string; // hex color
   // Session ID for AORP response tracking
   sessionId?: string;
 }
@@ -192,6 +198,13 @@ function buildUpdateData(currentTask: Task, args: UpdateTaskArgs): Task {
     ...(args.dueDate !== undefined && { due_date: args.dueDate }),
     ...(args.priority !== undefined && { priority: args.priority }),
     ...(args.done !== undefined && { done: args.done }),
+    // NEW: Additional fields
+    ...(args.percentDone !== undefined && { percent_done: args.percentDone }),
+    ...(args.startDate !== undefined && { start_date: args.startDate }),
+    ...(args.endDate !== undefined && { end_date: args.endDate }),
+    ...(args.hexColor !== undefined && { hex_color: args.hexColor }),
+    // NEW: Move task to different project
+    ...(args.projectId !== undefined && { project_id: args.projectId }),
     // Handle repeat configuration for updates
     ...(args.repeatAfter !== undefined || args.repeatMode !== undefined
       ? ((): Record<string, unknown> => {
