@@ -2715,12 +2715,123 @@ describe('Tasks Tool', () => {
   });
 
   describe('attach subcommand', () => {
-    it('should return not implemented error', async () => {
+    it('should throw validation error when no id provided', async () => {
+      await expect(
+        callTool('attach', {
+          fileContent: 'SGVsbG8gV29ybGQ=',
+        }),
+      ).rejects.toThrow('Task ID is required for attachment');
+    });
+
+    it('should throw validation error when no file content or url provided', async () => {
       await expect(
         callTool('attach', {
           id: 1,
         }),
-      ).rejects.toThrow('File attachments are not supported in the current MCP context');
+      ).rejects.toThrow('Either fileContent (base64) or fileUrl is required');
+    });
+
+    it('should upload attachment with base64 content', async () => {
+      // Mock fetch for attachment upload
+      const mockFetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ id: 1, file_name: 'test.txt' }),
+      });
+      global.fetch = mockFetch as jest.MockedFunction<typeof fetch>;
+
+      await expect(
+        callTool('attach', {
+          id: 1,
+          fileContent: 'SGVsbG8gV29ybGQ=', // "Hello World" in base64
+          fileName: 'test.txt',
+        }),
+      ).resolves.toBeDefined();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.vikunja.test/tasks/1/attachments',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+          }),
+        }),
+      );
+    });
+
+    it('should upload attachment from URL', async () => {
+      // Mock fetch for URL download and attachment upload
+      const mockFetch = jest.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(5)),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({ id: 2, file_name: 'document.pdf' }),
+        });
+      global.fetch = mockFetch as jest.MockedFunction<typeof fetch>;
+
+      await expect(
+        callTool('attach', {
+          id: 1,
+          fileUrl: 'https://example.com/document.pdf',
+        }),
+      ).resolves.toBeDefined();
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        'https://example.com/document.pdf',
+        expect.any(Object),
+      );
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        'https://api.vikunja.test/tasks/1/attachments',
+        expect.objectContaining({ method: 'PUT' }),
+      );
+    });
+
+    it('should throw error when URL download fails', async () => {
+      const mockFetch = jest.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      });
+      global.fetch = mockFetch as jest.MockedFunction<typeof fetch>;
+
+      await expect(
+        callTool('attach', {
+          id: 1,
+          fileUrl: 'https://example.com/notfound.pdf',
+        }),
+      ).rejects.toThrow('Failed to download file from URL');
+    });
+
+    it('should throw error when task not found (404)', async () => {
+      const mockFetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(5)),
+      }).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: jest.fn().mockResolvedValue('Task not found'),
+      });
+      global.fetch = mockFetch as jest.MockedFunction<typeof fetch>;
+
+      await expect(
+        callTool('attach', {
+          id: 999,
+          fileUrl: 'https://example.com/file.pdf',
+        }),
+      ).rejects.toThrow('Task with ID 999 not found');
+    });
+
+    it('should throw error for invalid base64 content', async () => {
+      await expect(
+        callTool('attach', {
+          id: 1,
+          fileContent: '!!!invalid-base64!!!',
+        }),
+      ).rejects.toThrow('Invalid base64 file content');
     });
   });
 

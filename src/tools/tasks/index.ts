@@ -105,15 +105,104 @@ async function listTasks(
 }
 
 /**
- * Handle file attachments (not supported)
+ * Handle file attachments
+ * Accepts base64-encoded file content or URL and uploads to Vikunja
  */
-function handleAttach(): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  // Attachment handling would require file upload capabilities
-  // which are not available in the current MCP context
-  throw new MCPError(
-    ErrorCode.NOT_IMPLEMENTED,
-    'File attachments are not supported in the current MCP context',
-  );
+async function handleAttach(
+  args: {
+    id: number;
+    fileContent?: string; // base64 encoded file
+    fileName?: string;
+    fileUrl?: string; // alternative: URL to download file from
+  },
+  authManager: AuthManager,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const { id, fileContent, fileName, fileUrl } = args;
+
+  if (!id) {
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task ID is required for attachment');
+  }
+
+  if (!fileContent && !fileUrl) {
+    throw new MCPError(
+      ErrorCode.VALIDATION_ERROR,
+      'Either fileContent (base64) or fileUrl is required',
+    );
+  }
+
+  const session = authManager.getSession();
+
+  let fileData: ArrayBuffer | null = null;
+  let finalFileName = fileName || 'attachment';
+
+  if (fileContent) {
+    // Decode base64 to binary
+    try {
+      // Remove data URL prefix if present
+      const base64Data = fileContent.replace(/^data:[^;]+;base64,/, '');
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      fileData = bytes.buffer;
+    } catch {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid base64 file content');
+    }
+  } else if (fileUrl) {
+    // Download file from URL
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+      fileData = await response.arrayBuffer();
+
+      // Extract filename from URL if not provided
+      if (!fileName && fileUrl) {
+        const urlParts = fileUrl.split('/');
+        const lastPart = urlParts[urlParts.length - 1];
+        finalFileName = lastPart?.split('?')[0] || 'attachment';
+      }
+    } catch {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Failed to download file from URL');
+    }
+  }
+
+  if (!fileData) {
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'No file data available');
+  }
+
+  // Create FormData with the file
+  const formData = new FormData();
+  const blob = new Blob([fileData]);
+  formData.append('file', blob, finalFileName);
+
+  // Upload to Vikunja
+  const response = await fetch(`${session.apiUrl}/tasks/${id}/attachments`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${session.apiToken}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    if (response.status === 404) {
+      throw new MCPError(ErrorCode.NOT_FOUND, `Task with ID ${id} not found`);
+    }
+    throw new MCPError(ErrorCode.API_ERROR, `Failed to upload attachment: ${errorText}`);
+  }
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: `Attachment "${finalFileName}" uploaded successfully to task ${id}`,
+      },
+    ],
+  };
 }
 
 export function registerTasksTool(
@@ -203,6 +292,10 @@ export function registerTasksTool(
       // Reminder fields
       reminderDate: z.string().optional(),
       reminderId: z.number().optional(),
+      // Attachment fields (NEW)
+      fileContent: z.string().optional(), // base64 encoded file content
+      fileName: z.string().optional(), // original filename
+      fileUrl: z.string().optional(), // URL to download file from
       // Add relation schema
       ...relationSchema,
       // Session ID for AORP response tracking
@@ -257,7 +350,15 @@ export function registerTasksTool(
             return handleComment(args as Parameters<typeof handleComment>[0]);
 
           case 'attach':
-            return handleAttach();
+            return handleAttach(
+              args as {
+                id: number;
+                fileContent?: string;
+                fileName?: string;
+                fileUrl?: string;
+              },
+              authManager,
+            );
 
           case 'bulk-update':
             return bulkUpdateTasks(args as Parameters<typeof bulkUpdateTasks>[0]);
