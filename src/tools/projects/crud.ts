@@ -447,6 +447,16 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
       updateData.hex_color = hexColor.toLowerCase();
     }
 
+    // Vikunja API workaround: description and parent_project_id require title to be sent
+    // Otherwise they are ignored. Fetch current project to get title if needed.
+    const needsTitleWorkaround =
+      (description !== undefined || parentProjectId !== undefined) && title === undefined;
+
+    if (needsTitleWorkaround && currentProject) {
+      // Include current title to prevent API from ignoring description/parent_project_id
+      updateData.title = currentProject.title;
+    }
+
     const updatedProject = await client.projects.updateProject(id, updateData as Project);
 
     const result = createProjectResponse(
