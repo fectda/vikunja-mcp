@@ -706,6 +706,38 @@ describe('Teams Tool', () => {
           callTool('members', { id: 1, memberSubcommand: 'remove', userId: 999 }),
         ).rejects.toThrow('Failed to remove user 999 from team 1');
       });
+
+      it('should handle error when removing last member', async () => {
+        // Vikunja API returns error when trying to remove the last member
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: false,
+          status: 400,
+          text: jest.fn().mockResolvedValue('You cannot delete the last member of a team.'),
+        } as any);
+
+        await expect(
+          callTool('members', { id: 1, memberSubcommand: 'remove', userId: 1 }),
+        ).rejects.toThrow();
+      });
+
+      it('should handle error when adding duplicate member', async () => {
+        // Vikunja API returns error when adding user already in team
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: false,
+          status: 409,
+          text: jest.fn().mockResolvedValue(
+            JSON.stringify({
+              code: 6005,
+              message: 'This user is already a member of that team.',
+            }),
+          ),
+        } as any);
+
+        // Test expects error to be thrown (any error is acceptable for this edge case)
+        await expect(
+          callTool('members', { id: 1, memberSubcommand: 'add', userId: 1 }),
+        ).rejects.toThrow();
+      });
     });
 
     describe('members update subcommand', () => {
