@@ -307,7 +307,7 @@ describe('Teams Tool', () => {
       const result = await callTool('update', { id: 1, name: 'Updated Team Name' });
 
       expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           Authorization: 'Bearer test-token',
           'Content-Type': 'application/json',
@@ -331,7 +331,7 @@ describe('Teams Tool', () => {
       const result = await callTool('update', { id: 1, description: 'New description' });
 
       expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           Authorization: 'Bearer test-token',
           'Content-Type': 'application/json',
@@ -354,7 +354,7 @@ describe('Teams Tool', () => {
       await callTool('update', { id: 1, name: 'Updated', description: 'Updated desc' });
 
       expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           Authorization: 'Bearer test-token',
           'Content-Type': 'application/json',

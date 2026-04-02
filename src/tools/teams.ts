@@ -184,9 +184,9 @@ export function registerTeamsTool(
             if (args.name !== undefined) updateData.name = args.name;
             if (args.description !== undefined) updateData.description = args.description;
 
-            // Make direct API call to update team
+            // Make direct API call to update team (use POST, not PUT - Vikunja API quirk)
             const response = await fetch(`${session.apiUrl}/teams/${teamId}`, {
-              method: 'PUT',
+              method: 'POST',
               headers: {
                 Authorization: `Bearer ${session.apiToken}`,
                 'Content-Type': 'application/json',
