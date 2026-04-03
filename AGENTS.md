@@ -4,6 +4,12 @@ This file provides guidance to AI agents when working with code in this reposito
 
 ---
 
+## Language Requirements
+
+**ALL documentation, comments, commit messages, and rules within this repository MUST be written in English. This rule applies regardless of the language the user uses to interact with the AI agent.**
+
+---
+
 ## SDD (Spec-Driven Development) Requirements
 
 All substantial changes MUST follow SDD workflow:
@@ -357,3 +363,28 @@ All technical documentation is in `docs/`:
 - `docs/AUTH_FIX_PRD.md` - Authentication fix documentation
 
 For SDD artifacts, see `openspec/changes/`.
+
+---
+
+## PRD Bug Fix Workflow
+
+When receiving a bug PRD in `docs/`, follow the workflow documented in `docs/PRD_BUG_FIX_WORKFLOW.md`:
+
+**Automatic flow:**
+
+```
+PRD detected → SDD (explore + propose + spec + design + tasks) → TDD → apply → verify → archive
+```
+
+**Key rules:**
+
+- SDD+TDD is mandatory for bugs affecting multiple files
+- Write failing test first (TDD), then implement fix
+- All pre-commit checks must pass before commit
+
+**Credentials for testing:**
+
+- Real Vikunja credentials can be stored in `.env` file
+- Use `npm run test:mcp` to run integration tests against real instance
+- ⚠️ **NEVER commit credentials** - `.env` is in `.gitignore`
+- Credentials format: `VIKUNJA_URL`, `VIKUNJA_TOKEN` or `VIKUNJA_USERNAME` + `VIKUNJA_PASSWORD`

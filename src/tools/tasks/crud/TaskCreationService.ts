@@ -24,6 +24,10 @@ export interface CreateTaskArgs {
   priority?: number;
   labels?: number[];
   assignees?: number[];
+  percentDone?: number;
+  startDate?: string;
+  endDate?: string;
+  hexColor?: string;
   repeatAfter?: number;
   repeatMode?: 'day' | 'week' | 'month' | 'year';
   // Session ID for AORP response tracking
@@ -102,6 +106,10 @@ export async function createTask(
     if (sanitizedDescription !== undefined) newTask.description = sanitizedDescription;
     if (args.dueDate !== undefined) newTask.due_date = args.dueDate;
     if (args.priority !== undefined) newTask.priority = args.priority;
+    if (args.percentDone !== undefined) newTask.percent_done = args.percentDone;
+    if (args.startDate !== undefined) newTask.start_date = args.startDate;
+    if (args.endDate !== undefined) newTask.end_date = args.endDate;
+    if (args.hexColor !== undefined) newTask.hex_color = args.hexColor.replace(/^#/, '');
 
     // Handle repeat configuration
     if (args.repeatAfter !== undefined || args.repeatMode !== undefined) {

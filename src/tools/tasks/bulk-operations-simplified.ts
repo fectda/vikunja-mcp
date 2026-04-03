@@ -353,6 +353,10 @@ export async function bulkCreateTasks(
         if (t.description !== undefined) newTask.description = t.description;
         if (t.dueDate !== undefined) newTask.due_date = t.dueDate;
         if (t.priority !== undefined) newTask.priority = t.priority;
+        if (t.percentDone !== undefined) newTask.percent_done = t.percentDone;
+        if (t.startDate !== undefined) newTask.start_date = t.startDate;
+        if (t.endDate !== undefined) newTask.end_date = t.endDate;
+        if (t.hexColor !== undefined) newTask.hex_color = t.hexColor.replace(/^#/, '');
         if (t.repeatAfter !== undefined || t.repeatMode !== undefined) {
           const rc = convertRepeatConfiguration(t.repeatAfter, t.repeatMode);
           if (rc.repeat_after !== undefined) newTask.repeat_after = rc.repeat_after;

@@ -64,6 +64,7 @@ export interface GetProjectArgs {
 export interface CreateProjectArgs {
   title: string;
   description?: string;
+  identifier?: string; // NEW: project identifier
   parentProjectId?: number;
   isArchived?: boolean;
   hexColor?: string;
@@ -237,6 +238,7 @@ export async function createProject(args: CreateProjectArgs): Promise<McpRespons
     parentProjectId,
     isArchived,
     hexColor,
+    identifier,
     verbosity,
     useOptimizedFormat,
     useAorp,
@@ -290,7 +292,7 @@ export async function createProject(args: CreateProjectArgs): Promise<McpRespons
     // Normalize hex color if provided
     let normalizedColor = hexColor;
     if (hexColor) {
-      normalizedColor = hexColor.toLowerCase();
+      normalizedColor = hexColor.replace(/^#/, '').toLowerCase();
     }
 
     // Build projectData object, only including defined properties to satisfy exactOptionalPropertyTypes
@@ -312,6 +314,10 @@ export async function createProject(args: CreateProjectArgs): Promise<McpRespons
 
     if (normalizedColor !== undefined) {
       projectData.hex_color = normalizedColor;
+    }
+
+    if (identifier !== undefined) {
+      projectData.identifier = identifier;
     }
 
     const createdProject = await client.projects.createProject(projectData as Project);
@@ -450,16 +456,13 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
       updateData.is_archived = isArchived;
     }
     if (hexColor !== undefined) {
-      updateData.hex_color = hexColor.toLowerCase();
+      updateData.hex_color = hexColor.replace(/^#/, '').toLowerCase();
     }
 
-    // Vikunja API workaround: description and parent_project_id require title to be sent
-    // Otherwise they are ignored. Fetch current project to get title if needed.
-    const needsTitleWorkaround =
-      (description !== undefined || parentProjectId !== undefined) && title === undefined;
-
-    if (needsTitleWorkaround && currentProject) {
-      // Include current title to prevent API from ignoring description/parent_project_id
+    // Vikunja API workaround: ALL updates require title to be sent
+    // Otherwise they are ignored or rejected with "Invalid Data".
+    // Fetch current project to get title if not provided.
+    if (title === undefined && currentProject) {
       updateData.title = currentProject.title;
     }
 

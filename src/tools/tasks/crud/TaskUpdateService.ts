@@ -202,7 +202,7 @@ function buildUpdateData(currentTask: Task, args: UpdateTaskArgs): Task {
     ...(args.percentDone !== undefined && { percent_done: args.percentDone }),
     ...(args.startDate !== undefined && { start_date: args.startDate }),
     ...(args.endDate !== undefined && { end_date: args.endDate }),
-    ...(args.hexColor !== undefined && { hex_color: args.hexColor }),
+    ...(args.hexColor !== undefined && { hex_color: args.hexColor.replace(/^#/, '') }),
     // NEW: Move task to different project
     ...(args.projectId !== undefined && { project_id: args.projectId }),
     // Handle repeat configuration for updates

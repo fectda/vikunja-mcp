@@ -23,6 +23,10 @@ export interface BulkCreateTaskData {
   priority?: number;
   labels?: number[];
   assignees?: number[];
+  percentDone?: number;
+  startDate?: string;
+  endDate?: string;
+  hexColor?: string;
   repeatAfter?: number;
   repeatMode?: 'day' | 'week' | 'month' | 'year';
 }
@@ -79,7 +83,11 @@ export const bulkOperationValidator = {
     }
 
     // Handle numeric fields that come as strings
-    if (args.field && ['priority', 'project_id', 'repeat_after'].includes(args.field) && typeof args.value === 'string') {
+    if (
+      args.field &&
+      ['priority', 'project_id', 'repeat_after'].includes(args.field) &&
+      typeof args.value === 'string'
+    ) {
       const numValue = Number(args.value);
       if (!isNaN(numValue)) {
         args.value = numValue;
@@ -98,6 +106,10 @@ export const bulkOperationValidator = {
       'project_id',
       'assignees',
       'labels',
+      'percent_done',
+      'start_date',
+      'end_date',
+      'hex_color',
       'repeat_after',
       'repeat_mode',
     ];
@@ -122,6 +134,28 @@ export const bulkOperationValidator = {
 
     if (args.field === 'project_id' && typeof args.value === 'number') {
       validateId(args.value, 'project_id');
+    }
+
+    if (args.field === 'percent_done' && typeof args.value === 'number') {
+      if (args.value < 0 || args.value > 100) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'percent_done must be between 0 and 100');
+      }
+    }
+
+    if (
+      ['start_date', 'end_date'].includes(args.field as string) &&
+      typeof args.value === 'string'
+    ) {
+      validateDateString(args.value as string, args.field as string);
+    }
+
+    if (args.field === 'hex_color' && typeof args.value === 'string') {
+      if (!/^(#)?[0-9A-Fa-f]{6}$/.test(args.value)) {
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'hex_color must be a valid hex color (e.g. #ff0000 or ff0000)',
+        );
+      }
     }
 
     if (['assignees', 'labels'].includes(args.field)) {
@@ -226,5 +260,5 @@ export const bulkOperationValidator = {
         task.labels.forEach((id) => validateId(id, `tasks[${index}].label ID`));
       }
     });
-  }
+  },
 };

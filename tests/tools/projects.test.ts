@@ -312,7 +312,7 @@ describe('Projects Tool', () => {
       expect(mockClient.projects.createProject).toHaveBeenCalledWith({
         title: 'Test Project',
         description: 'Test Description',
-        hex_color: '#4287f5',
+        hex_color: '4287f5',
       });
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
@@ -385,7 +385,7 @@ describe('Projects Tool', () => {
         description: 'Full description',
         parent_project_id: 1,
         is_archived: false,
-        hex_color: '#ff0000', // Normalized to lowercase
+        hex_color: 'ff0000', // Normalized to lowercase and # stripped
       });
     });
 
@@ -394,12 +394,12 @@ describe('Projects Tool', () => {
         mockClient.projects.createProject.mockResolvedValue(mockProject);
 
         const validColors = [
-          { input: '#4287f5', expected: '#4287f5' },
-          { input: '#FF0000', expected: '#ff0000' },
-          { input: '#00ff00', expected: '#00ff00' },
-          { input: '#123456', expected: '#123456' },
-          { input: '#abcdef', expected: '#abcdef' },
-          { input: '#ABCDEF', expected: '#abcdef' },
+          { input: '#4287f5', expected: '4287f5' },
+          { input: '#FF0000', expected: 'ff0000' },
+          { input: '#00ff00', expected: '00ff00' },
+          { input: '#123456', expected: '123456' },
+          { input: '#abcdef', expected: 'abcdef' },
+          { input: '#ABCDEF', expected: 'abcdef' },
         ];
 
         for (const { input, expected } of validColors) {
@@ -532,7 +532,7 @@ describe('Projects Tool', () => {
         description: 'New Description',
         parent_project_id: 2,
         is_archived: true,
-        hex_color: '#ff0000', // Already lowercase
+        hex_color: 'ff0000', // Already lowercase
       });
     });
 
@@ -568,17 +568,18 @@ describe('Projects Tool', () => {
         mockClient.projects.updateProject.mockResolvedValue(mockProject);
 
         const validColors = [
-          { input: '#4287f5', expected: '#4287f5' },
-          { input: '#FF0000', expected: '#ff0000' },
-          { input: '#00ff00', expected: '#00ff00' },
-          { input: '#123456', expected: '#123456' },
-          { input: '#abcdef', expected: '#abcdef' },
-          { input: '#ABCDEF', expected: '#abcdef' },
+          { input: '#4287f5', expected: '4287f5' },
+          { input: '#FF0000', expected: 'ff0000' },
+          { input: '#00ff00', expected: '00ff00' },
+          { input: '#123456', expected: '123456' },
+          { input: '#abcdef', expected: 'abcdef' },
+          { input: '#ABCDEF', expected: 'abcdef' },
         ];
 
         for (const { input, expected } of validColors) {
           await callTool('update', { id: 1, hexColor: input });
           expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
+            title: 'Test Project',
             hex_color: expected,
           });
         }

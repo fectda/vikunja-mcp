@@ -2,9 +2,29 @@
 
 ## Estado
 **MCP Version**: `@democratize-technology/vikunja-mcp@0.2.2`
-**Commit**: `2ff08dc`
+**Commit**: `9a2b1a3` (actualizado 2026-04-02)
 **Fecha**: 2026-04-02
 **Reportado por**: vikunja-mcp-docker wrapper (tests de persistencia)
+
+---
+
+## NUEVOS BUGS v0.2.2 (commit 9a2b1a3)
+
+### Bug: Campos nuevos no persisten
+
+A pesar de que el MCP ahora envía los campos, Vikunja no los guarda.
+
+| Campo | MCP Envía | Vikunja Guarda | Notas |
+|-------|-----------|----------------|-------|
+| `percentDone` | ✅ Sí | ❌ No | API devuelve 0 |
+| `startDate` | ✅ Sí | ❌ No | API devuelve `0001-01-01` |
+| `endDate` | ✅ Sí | ❌ No | API devuelve `0001-01-01` |
+| `hexColor` (tasks) | ✅ Sí | ❌ No | API devuelve string vacío |
+| `hexColor` (projects) | ✅ Sí | ❌ No | API devuelve string vacío |
+| `identifier` (projects) | ✅ Sí | ❌ No | API devuelve string vacío |
+| `attachments` | ✅ Sí | ❌ No visible | Upload OK, GET no devuelve |
+
+**Tests**: Los tests del wrapper detectan esto como "known issue". El MCP responde OK pero la API no guarda.
 
 ---
 
