@@ -10,7 +10,6 @@ import type { VikunjaClientConstructor } from '../../src/types/node-vikunja-exte
 
 describe('VikunjaClientFactory', () => {
   let mockAuthManager: jest.Mocked<AuthManager>;
-  let mockVikunjaClient: any;
   let mockVikunjaClientConstructor: jest.MockedFunction<VikunjaClientConstructor>;
   let factory: VikunjaClientFactory;
 
@@ -47,17 +46,14 @@ describe('VikunjaClientFactory', () => {
     it('should create a new client instance on first call', () => {
       const session = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token-123'
+        apiToken: 'test-token-123',
       };
 
       mockAuthManager.getSession.mockReturnValue(session);
 
       const client = factory.getClient();
 
-      expect(mockVikunjaClientConstructor).toHaveBeenCalledWith(
-        session.apiUrl,
-        session.apiToken
-      );
+      expect(mockVikunjaClientConstructor).toHaveBeenCalledWith(session.apiUrl, session.apiToken);
       expect(client).toBeDefined();
       expect(typeof client).toBe('object');
       expect(mockAuthManager.getSession).toHaveBeenCalledTimes(1);
@@ -66,7 +62,7 @@ describe('VikunjaClientFactory', () => {
     it('should return cached client for same session', () => {
       const session = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token-123'
+        apiToken: 'test-token-123',
       };
 
       mockAuthManager.getSession.mockReturnValue(session);
@@ -82,41 +78,45 @@ describe('VikunjaClientFactory', () => {
     it('should create new client when API URL changes', () => {
       const session1 = {
         apiUrl: 'https://test1.vikunja.com',
-        apiToken: 'test-token-123'
+        apiToken: 'test-token-123',
       };
 
       const session2 = {
         apiUrl: 'https://test2.vikunja.com',
-        apiToken: 'test-token-123'
+        apiToken: 'test-token-123',
       };
 
-      mockAuthManager.getSession
-        .mockReturnValueOnce(session1)
-        .mockReturnValueOnce(session2);
+      mockAuthManager.getSession.mockReturnValueOnce(session1).mockReturnValueOnce(session2);
 
       const client1 = factory.getClient();
       const client2 = factory.getClient();
 
       expect(client1).not.toBe(client2);
       expect(mockVikunjaClientConstructor).toHaveBeenCalledTimes(2);
-      expect(mockVikunjaClientConstructor).toHaveBeenNthCalledWith(1, session1.apiUrl, session1.apiToken);
-      expect(mockVikunjaClientConstructor).toHaveBeenNthCalledWith(2, session2.apiUrl, session2.apiToken);
+      expect(mockVikunjaClientConstructor).toHaveBeenNthCalledWith(
+        1,
+        session1.apiUrl,
+        session1.apiToken,
+      );
+      expect(mockVikunjaClientConstructor).toHaveBeenNthCalledWith(
+        2,
+        session2.apiUrl,
+        session2.apiToken,
+      );
     });
 
     it('should create new client when API token changes', () => {
       const session1 = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token-123'
+        apiToken: 'test-token-123',
       };
 
       const session2 = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token-456'
+        apiToken: 'test-token-456',
       };
 
-      mockAuthManager.getSession
-        .mockReturnValueOnce(session1)
-        .mockReturnValueOnce(session2);
+      mockAuthManager.getSession.mockReturnValueOnce(session1).mockReturnValueOnce(session2);
 
       const client1 = factory.getClient();
       const client2 = factory.getClient();
@@ -133,7 +133,7 @@ describe('VikunjaClientFactory', () => {
         { apiUrl: 'https://test3.vikunja.com', apiToken: 'token3' },
       ];
 
-      sessions.forEach(session => {
+      sessions.forEach((session) => {
         mockAuthManager.getSession.mockReturnValueOnce(session);
         const client = factory.getClient();
         expect(client).toBeDefined();
@@ -150,7 +150,7 @@ describe('VikunjaClientFactory', () => {
       // We'll test that the factory handles whatever the constructor returns
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       });
 
       const client = factory.getClient();
@@ -169,7 +169,7 @@ describe('VikunjaClientFactory', () => {
     it('should handle undefined API URL', () => {
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: undefined,
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       });
 
       const client = factory.getClient();
@@ -180,18 +180,21 @@ describe('VikunjaClientFactory', () => {
     it('should handle undefined API token', () => {
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://test.vikunja.com',
-        apiToken: undefined
+        apiToken: undefined,
       });
 
       const client = factory.getClient();
       expect(client).toBeDefined();
-      expect(mockVikunjaClientConstructor).toHaveBeenCalledWith('https://test.vikunja.com', undefined);
+      expect(mockVikunjaClientConstructor).toHaveBeenCalledWith(
+        'https://test.vikunja.com',
+        undefined,
+      );
     });
 
     it('should handle empty strings in session', () => {
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: '',
-        apiToken: ''
+        apiToken: '',
       });
 
       const client = factory.getClient();
@@ -202,7 +205,7 @@ describe('VikunjaClientFactory', () => {
     it('should handle null values in session', () => {
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: null,
-        apiToken: null
+        apiToken: null,
       });
 
       const client = factory.getClient();
@@ -215,7 +218,7 @@ describe('VikunjaClientFactory', () => {
     it('should cleanup client instance and session data', () => {
       const session = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       };
 
       mockAuthManager.getSession.mockReturnValue(session);
@@ -241,7 +244,7 @@ describe('VikunjaClientFactory', () => {
     it('should handle multiple cleanup calls', () => {
       const session = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       };
 
       mockAuthManager.getSession.mockReturnValue(session);
@@ -259,7 +262,7 @@ describe('VikunjaClientFactory', () => {
     it('should return true when session is valid', () => {
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       });
 
       const isValid = factory.hasValidSession();
@@ -310,7 +313,7 @@ describe('VikunjaClientFactory', () => {
     it('should not create client when checking session validity', () => {
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       });
 
       factory.hasValidSession();
@@ -320,8 +323,9 @@ describe('VikunjaClientFactory', () => {
 
   describe('Constructor and Initialization', () => {
     it('should initialize with required dependencies', () => {
-      expect(() => new VikunjaClientFactory(mockAuthManager, mockVikunjaClientConstructor))
-        .not.toThrow();
+      expect(
+        () => new VikunjaClientFactory(mockAuthManager, mockVikunjaClientConstructor),
+      ).not.toThrow();
     });
 
     it('should store provided dependencies', () => {
@@ -330,21 +334,21 @@ describe('VikunjaClientFactory', () => {
       // Test that factory was initialized correctly by checking it can create clients
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       });
 
       const client = factory.getClient();
       expect(client).toBeDefined();
       expect(mockVikunjaClientConstructor).toHaveBeenCalledWith(
         'https://test.vikunja.com',
-        'test-token'
+        'test-token',
       );
     });
 
     it('should handle different VikunjaClient implementations', () => {
       const customClient = {
         customMethod: jest.fn(),
-        tasks: { list: jest.fn() }
+        tasks: { list: jest.fn() },
       };
 
       const customConstructor = jest.fn().mockReturnValue(customClient);
@@ -352,15 +356,12 @@ describe('VikunjaClientFactory', () => {
 
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://custom.vikunja.com',
-        apiToken: 'custom-token'
+        apiToken: 'custom-token',
       });
 
       const client = customFactory.getClient();
       expect(client).toBe(customClient);
-      expect(customConstructor).toHaveBeenCalledWith(
-        'https://custom.vikunja.com',
-        'custom-token'
-      );
+      expect(customConstructor).toHaveBeenCalledWith('https://custom.vikunja.com', 'custom-token');
     });
   });
 
@@ -368,7 +369,7 @@ describe('VikunjaClientFactory', () => {
     it('should handle rapid client creation requests', () => {
       const session = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       };
 
       mockAuthManager.getSession.mockReturnValue(session);
@@ -380,7 +381,7 @@ describe('VikunjaClientFactory', () => {
       }
 
       // All should return the same client
-      clients.forEach(client => {
+      clients.forEach((client) => {
         expect(client).toBeDefined();
         expect(typeof client).toBe('object');
       });
@@ -392,12 +393,12 @@ describe('VikunjaClientFactory', () => {
     it('should handle session changes with cleanup', () => {
       const session1 = {
         apiUrl: 'https://test1.vikunja.com',
-        apiToken: 'token1'
+        apiToken: 'token1',
       };
 
       const session2 = {
         apiUrl: 'https://test2.vikunja.com',
-        apiToken: 'token2'
+        apiToken: 'token2',
       };
 
       mockAuthManager.getSession.mockReturnValueOnce(session1);
@@ -419,7 +420,7 @@ describe('VikunjaClientFactory', () => {
     it('should maintain client state after cleanup', () => {
       const session = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       };
 
       mockAuthManager.getSession.mockReturnValue(session);
@@ -441,7 +442,7 @@ describe('VikunjaClientFactory', () => {
       mockVikunjaClientConstructor.mockReturnValueOnce(undefined as any);
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       });
 
       const client = factory.getClient();
@@ -457,7 +458,7 @@ describe('VikunjaClientFactory', () => {
 
       mockAuthManager.getSession.mockReturnValue({
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       });
 
       expect(() => factory.getClient()).toThrow(constructorError);
@@ -468,7 +469,7 @@ describe('VikunjaClientFactory', () => {
     it('should not leak references after cleanup', () => {
       const sessions = Array.from({ length: 5 }, (_, i) => ({
         apiUrl: `https://test${i}.vikunja.com`,
-        apiToken: `token${i}`
+        apiToken: `token${i}`,
       }));
 
       sessions.forEach((session, index) => {
@@ -489,7 +490,7 @@ describe('VikunjaClientFactory', () => {
     it('should handle cleanup without affecting session validation', () => {
       const session = {
         apiUrl: 'https://test.vikunja.com',
-        apiToken: 'test-token'
+        apiToken: 'test-token',
       };
 
       mockAuthManager.getSession.mockReturnValue(session);
@@ -502,6 +503,111 @@ describe('VikunjaClientFactory', () => {
 
       const isValidAfter = factory.hasValidSession();
       expect(isValidAfter).toBe(true);
+    });
+  });
+
+  describe('Tasks Endpoint Monkey Patching', () => {
+    it('should return a client with a patched tasks.getAllTasks method', () => {
+      const session = {
+        apiUrl: 'https://test.vikunja.com',
+        apiToken: 'test-token-123',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      const client = factory.getClient();
+      expect(client.tasks.getAllTasks).toBeDefined();
+      expect(client.tasks.getAllTasks.toString()).toContain('fetch');
+    });
+
+    it('should call global fetch with the correct URL, parameters, and Authorization header', async () => {
+      const session = {
+        apiUrl: 'https://test.vikunja.com',
+        apiToken: 'test-token-123',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      // Mock global fetch
+      const mockFetchResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 1, title: 'Test Task' }]),
+      };
+      global.fetch = jest.fn().mockResolvedValue(mockFetchResponse as any);
+
+      const client = factory.getClient();
+
+      const params = { page: 1, filter: 'title = "foo"' };
+      const tasks = await client.tasks.getAllTasks(params);
+
+      expect(tasks).toEqual([{ id: 1, title: 'Test Task' }]);
+
+      const searchParams = new URLSearchParams(params as any);
+      expect(global.fetch).toHaveBeenCalledWith(
+        `https://test.vikunja.com/api/v1/tasks?${searchParams.toString()}`,
+        {
+          headers: {
+            Authorization: 'Bearer test-token-123',
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      // Clean up mock
+      (global.fetch as jest.Mock).mockRestore();
+    });
+
+    it('should throw an error if the fetch response is not ok', async () => {
+      const session = {
+        apiUrl: 'https://test.vikunja.com',
+        apiToken: 'test-token-123',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      // Mock global fetch
+      const mockFetchResponse = {
+        ok: false,
+        status: 400,
+        text: jest.fn().mockResolvedValue('Bad Request Error Text'),
+      };
+      global.fetch = jest.fn().mockResolvedValue(mockFetchResponse as any);
+
+      const client = factory.getClient();
+
+      await expect(client.tasks.getAllTasks()).rejects.toThrow(
+        'Failed to get tasks: 400 Bad Request Error Text',
+      );
+
+      // Clean up mock
+      (global.fetch as jest.Mock).mockRestore();
+    });
+
+    it('should throw an error with statusText if reading text fails', async () => {
+      const session = {
+        apiUrl: 'https://test.vikunja.com',
+        apiToken: 'test-token-123',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      // Mock global fetch
+      const mockFetchResponse = {
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: jest.fn().mockRejectedValue(new Error('Cannot read text')),
+      };
+      global.fetch = jest.fn().mockResolvedValue(mockFetchResponse as any);
+
+      const client = factory.getClient();
+
+      await expect(client.tasks.getAllTasks()).rejects.toThrow(
+        'Failed to get tasks: 500 Internal Server Error',
+      );
+
+      // Clean up mock
+      (global.fetch as jest.Mock).mockRestore();
     });
   });
 });

@@ -142,11 +142,8 @@ export const bulkOperationValidator = {
       }
     }
 
-    if (
-      ['start_date', 'end_date'].includes(args.field as string) &&
-      typeof args.value === 'string'
-    ) {
-      validateDateString(args.value as string, args.field as string);
+    if (['start_date', 'end_date'].includes(args.field) && typeof args.value === 'string') {
+      validateDateString(args.value, args.field);
     }
 
     if (args.field === 'hex_color' && typeof args.value === 'string') {

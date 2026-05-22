@@ -18,7 +18,7 @@ export class VikunjaClientFactory {
 
   constructor(
     private readonly authManager: AuthManager,
-    private readonly VikunjaClientClass: VikunjaClientConstructor
+    private readonly VikunjaClientClass: VikunjaClientConstructor,
   ) {}
 
   /**
@@ -28,24 +28,57 @@ export class VikunjaClientFactory {
     const session = this.authManager.getSession();
 
     // Check if we need to create a new client
-    if (!this.clientInstance || 
-        this.currentApiUrl !== session.apiUrl || 
-        this.currentApiToken !== session.apiToken) {
-      
+    if (
+      !this.clientInstance ||
+      this.currentApiUrl !== session.apiUrl ||
+      this.currentApiToken !== session.apiToken
+    ) {
       // Clean up old client if it exists
       if (this.clientInstance) {
         this.clientInstance = null;
       }
-      
+
       this.clientInstance = new this.VikunjaClientClass(session.apiUrl, session.apiToken);
       this.currentApiUrl = session.apiUrl;
       this.currentApiToken = session.apiToken;
+
+      // Monkey-patch getAllTasks to use /tasks instead of /tasks/all
+      // This is a workaround for the deprecated /tasks/all endpoint in node-vikunja
+      if (this.clientInstance.tasks) {
+        type OriginalGetAllTasks = typeof this.clientInstance.tasks.getAllTasks;
+        this.clientInstance.tasks.getAllTasks = (async (
+          params?: Record<string, string | readonly string[]>,
+        ): Promise<unknown> => {
+          const baseUrl = this.currentApiUrl || '';
+          const token = this.currentApiToken || '';
+          const url = new URL(`${baseUrl}/api/v1/tasks`);
+
+          if (params) {
+            const searchParams = new URLSearchParams(params);
+            url.search = searchParams.toString();
+          }
+
+          const response = await fetch(url.toString(), {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => response.statusText);
+            throw new Error(`Failed to get tasks: ${response.status} ${errorText}`);
+          }
+
+          return response.json();
+        }) as OriginalGetAllTasks;
+      }
     }
 
     if (!this.clientInstance) {
       throw new Error('Failed to create Vikunja client instance');
     }
-    
+
     return this.clientInstance;
   }
 
