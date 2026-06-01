@@ -30,23 +30,28 @@ const GetFilterSchema = z.object({
 /**
  * Schema for creating a filter
  */
-const CreateFilterSchema = z.object({
-  name: z.string().optional().describe('Filter name'),
-  title: z.string().optional().describe('Filter title (alias for name)'),
-  description: z.string().optional().describe('Filter description'),
-  filter: z.string().optional().describe('Filter query string'),
-  filters: z.object({
-    filter_by: z.array(z.string()).optional(),
-    filter_value: z.array(z.string()).optional(),
-    filter_comparator: z.array(z.string()).optional(),
-    filter_concat: z.string().optional(),
-  }).optional().describe('Filter conditions object'),
-  projectId: z.number().optional().describe('Project ID (for project-specific filters)'),
-  isGlobal: z.boolean().default(false).describe('Whether the filter is globally accessible'),
-  is_favorite: z.boolean().optional().describe('Whether the filter is marked as favorite'),
-}).refine(data => (data.name || data.title) && (data.filter || data.filters), {
-  message: 'Either name or title must be provided, and either filter or filters must be provided'
-});
+const CreateFilterSchema = z
+  .object({
+    name: z.string().optional().describe('Filter name'),
+    title: z.string().optional().describe('Filter title (alias for name)'),
+    description: z.string().optional().describe('Filter description'),
+    filter: z.string().optional().describe('Filter query string'),
+    filters: z
+      .object({
+        filter_by: z.array(z.string()).optional(),
+        filter_value: z.array(z.string()).optional(),
+        filter_comparator: z.array(z.string()).optional(),
+        filter_concat: z.string().optional(),
+      })
+      .optional()
+      .describe('Filter conditions object'),
+    projectId: z.number().optional().describe('Project ID (for project-specific filters)'),
+    isGlobal: z.boolean().default(false).describe('Whether the filter is globally accessible'),
+    is_favorite: z.boolean().optional().describe('Whether the filter is marked as favorite'),
+  })
+  .refine((data) => (data.name || data.title) && (data.filter || data.filters), {
+    message: 'Either name or title must be provided, and either filter or filters must be provided',
+  });
 
 /**
  * Schema for updating a filter
@@ -109,31 +114,46 @@ const ValidateFilterSchema = z.object({
 /**
  * Get session-scoped storage instance
  */
-async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+async function getSessionStorage(
+  authManager: AuthManager,
+): ReturnType<typeof storageManager.getStorage> {
   const session = authManager.getSession();
-  const sessionId = session.apiToken ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}` : 'anonymous';
+  const sessionId = session.apiToken
+    ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}`
+    : 'anonymous';
   return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
 }
 
 /**
  * Register filters tool
  */
-export function registerFiltersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerFiltersTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   server.tool(
     'vikunja_filters',
     'Manage and build advanced filters for tasks and projects with validation',
     {
       action: z.enum(['list', 'get', 'create', 'update', 'delete', 'build', 'validate']),
-      parameters: z.record(z.unknown()),
+      parameters: z.record(z.unknown()).optional(),
+      conditions: BuildFilterSchema.shape.conditions.optional(),
+      groupOperator: BuildFilterSchema.shape.groupOperator.optional(),
     },
-    async ({ action, parameters }) => {
+    async ({ action, parameters, conditions, groupOperator }) => {
+      // Merge top-level build fields into effective params for backward compat
+      let effectiveParams: Record<string, unknown> = parameters ?? {};
+      if (action === 'build' && conditions) {
+        effectiveParams = { ...effectiveParams, conditions, groupOperator };
+      }
       logger.info(`Executing vikunja_filters action: ${action}`);
 
       try {
         const storage = await getSessionStorage(authManager);
         switch (action) {
           case 'list': {
-            const params = ListFiltersSchema.parse(parameters);
+            const params = ListFiltersSchema.parse(effectiveParams);
             logger.debug(`Listing filters with params:`, params);
 
             let filters = await storage.list();
@@ -173,7 +193,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           }
 
           case 'get': {
-            const params = GetFilterSchema.parse(parameters);
+            const params = GetFilterSchema.parse(effectiveParams);
             logger.debug(`Getting filter with id: ${params.id}`);
 
             const filter = await storage.get(params.id);
@@ -209,8 +229,8 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           }
 
           case 'create': {
-            const params = CreateFilterSchema.parse(parameters);
-            
+            const params = CreateFilterSchema.parse(effectiveParams);
+
             // Use title as name if name is not provided
             // Schema validation ensures at least one of name/title is provided
             const name = params.name ?? params.title;
@@ -220,10 +240,14 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             if (!filterString && params.filters) {
               const builder = new FilterBuilder();
               const { filter_by, filter_value, filter_comparator, filter_concat } = params.filters;
-              
+
               if (filter_by && filter_value && filter_comparator) {
                 // Collect all conditions first, then build the filter
-                const conditions: Array<{field: FilterField, operator: FilterOperator, value: FilterValue}> = [];
+                const conditions: Array<{
+                  field: FilterField;
+                  operator: FilterOperator;
+                  value: FilterValue;
+                }> = [];
 
                 for (let i = 0; i < filter_by.length; i++) {
                   const field = filter_by[i];
@@ -243,14 +267,22 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
                     typedValue = value === 'true';
                   }
 
-                  conditions.push({ field: validField, operator: validComparator, value: typedValue });
+                  conditions.push({
+                    field: validField,
+                    operator: validComparator,
+                    value: typedValue,
+                  });
                 }
 
                 // Build filter with all conditions
                 if (conditions.length > 0) {
                   const firstCondition = conditions[0];
                   if (firstCondition) {
-                    builder.where(firstCondition.field, firstCondition.operator, firstCondition.value);
+                    builder.where(
+                      firstCondition.field,
+                      firstCondition.operator,
+                      firstCondition.value,
+                    );
                   }
 
                   for (let i = 1; i < conditions.length; i++) {
@@ -266,7 +298,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
                   }
                 }
               }
-              
+
               filterString = builder.toString();
             }
 
@@ -315,7 +347,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           }
 
           case 'update': {
-            const params = UpdateFilterSchema.parse(parameters);
+            const params = UpdateFilterSchema.parse(effectiveParams);
             logger.debug(`Updating filter with id: ${params.id}`);
 
             const { id, ...updates } = params;
@@ -370,7 +402,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           }
 
           case 'delete': {
-            const params = DeleteFilterSchema.parse(parameters);
+            const params = DeleteFilterSchema.parse(effectiveParams);
             logger.debug(`Deleting filter with id: ${params.id}`);
 
             const filter = await storage.get(params.id);
@@ -397,7 +429,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           }
 
           case 'build': {
-            const params = BuildFilterSchema.parse(parameters);
+            const params = BuildFilterSchema.parse(effectiveParams);
             logger.debug(`Building filter from conditions`);
 
             const builder = new FilterBuilder();
@@ -406,11 +438,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               if (index > 0 && params.groupOperator === '||') {
                 builder.or();
               }
-              builder.where(
-                condition.field,
-                condition.operator,
-                condition.value,
-              );
+              builder.where(condition.field, condition.operator, condition.value);
             });
 
             const filterString = builder.toString();
@@ -437,7 +465,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           }
 
           case 'validate': {
-            const params = ValidateFilterSchema.parse(parameters);
+            const params = ValidateFilterSchema.parse(effectiveParams);
             logger.debug(`Validating filter: ${params.filter}`);
 
             // Parse the filter string using our secure parser
@@ -451,13 +479,16 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             // Validate the parsed expression
             const validationResult = validateFilterExpression(parseResult.expression);
 
-            const response = createStandardResponse('validate-filter',
-              validationResult.valid ? 'Filter is valid' : 'Filter validation failed', {
-              valid: validationResult.valid,
-              warnings: validationResult.warnings || [],
-              errors: validationResult.errors || [],
-              filter: params.filter,
-            });
+            const response = createStandardResponse(
+              'validate-filter',
+              validationResult.valid ? 'Filter is valid' : 'Filter validation failed',
+              {
+                valid: validationResult.valid,
+                warnings: validationResult.warnings || [],
+                errors: validationResult.errors || [],
+                filter: params.filter,
+              },
+            );
 
             return {
               content: [
@@ -476,40 +507,52 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
         logger.error(`Error in vikunja_filters tool:`, error);
 
         // Convert errors to proper AORP error responses for tests
-        const operation = action === 'get' && error instanceof Error && error.message.includes('not found') ? 'get-saved-filter' :
-                         action === 'delete' && error instanceof Error && error.message.includes('not found') ? 'delete-saved-filter' :
-                         action === 'create' && error instanceof Error && error.message.includes('already exists') ? 'create-saved-filter' :
-                         action === 'update' && error instanceof Error && error.message.includes('already exists') ? 'update-saved-filter' :
-                         `${action}-filter`;
+        const operation =
+          action === 'get' && error instanceof Error && error.message.includes('not found')
+            ? 'get-saved-filter'
+            : action === 'delete' && error instanceof Error && error.message.includes('not found')
+              ? 'delete-saved-filter'
+              : action === 'create' &&
+                  error instanceof Error &&
+                  error.message.includes('already exists')
+                ? 'create-saved-filter'
+                : action === 'update' &&
+                    error instanceof Error &&
+                    error.message.includes('already exists')
+                  ? 'update-saved-filter'
+                  : `${action}-filter`;
 
-        const aorpErrorResult = createAorpErrorResponse(operation, error instanceof Error ? error.message : String(error));
+        const aorpErrorResult = createAorpErrorResponse(
+          operation,
+          error instanceof Error ? error.message : String(error),
+        );
 
         // Create compatibility result with required SimpleAorpResponse properties
-      const compatibilityResult = {
-        content: aorpErrorResult.content,
-        immediate: {
-          status: 'error' as const,
-          key_insight: aorpErrorResult.content.split('\n')[0] || 'Error occurred',
-          confidence: 0.0
-        },
-        summary: aorpErrorResult.content.split('\n')[0] || 'Error occurred',
-        metadata: {
-          timestamp: aorpErrorResult.metadata?.timestamp || new Date().toISOString(),
-          operation: `${action}-filter`,
-          success: false,
-          ...(aorpErrorResult.metadata || {})
-        }
-      };
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: formatAorpAsMarkdown(compatibilityResult),
+        const compatibilityResult = {
+          content: aorpErrorResult.content,
+          immediate: {
+            status: 'error' as const,
+            key_insight: aorpErrorResult.content.split('\n')[0] || 'Error occurred',
+            confidence: 0.0,
           },
-        ],
-      };
-    }
-  },
-);
+          summary: aorpErrorResult.content.split('\n')[0] || 'Error occurred',
+          metadata: {
+            timestamp: aorpErrorResult.metadata?.timestamp || new Date().toISOString(),
+            operation: `${action}-filter`,
+            success: false,
+            ...(aorpErrorResult.metadata || {}),
+          },
+        };
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: formatAorpAsMarkdown(compatibilityResult),
+            },
+          ],
+        };
+      }
+    },
+  );
 }
