@@ -122,7 +122,11 @@ async function exportProjectRecursive(
 
 // Schema definitions
 
-export function registerExportTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerExportTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   // Export project data
   server.tool(
     'vikunja_export_project',
@@ -199,11 +203,21 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
     'vikunja_request_user_export',
     'Request a complete export of user data for privacy and backup purposes',
     {
-      password: z.string().min(1),
+      password: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('Vikunja password. Falls back to VIKUNJA_EXPORT_PASSWORD env var.'),
     },
     async (args) => {
       try {
-        const { password } = args;
+        const password = args.password || process.env.VIKUNJA_EXPORT_PASSWORD;
+        if (!password) {
+          throw new MCPError(
+            ErrorCode.VALIDATION_ERROR,
+            'Password is required for export. Pass it as an argument or set VIKUNJA_EXPORT_PASSWORD.',
+          );
+        }
 
         await getClientFromContext();
 
@@ -271,11 +285,21 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
     'vikunja_download_user_export',
     'Download previously requested user data export files',
     {
-      password: z.string().min(1),
+      password: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('Vikunja password. Falls back to VIKUNJA_EXPORT_PASSWORD env var.'),
     },
     async (args) => {
       try {
-        const { password } = args;
+        const password = args.password || process.env.VIKUNJA_EXPORT_PASSWORD;
+        if (!password) {
+          throw new MCPError(
+            ErrorCode.VALIDATION_ERROR,
+            'Password is required for export. Pass it as an argument or set VIKUNJA_EXPORT_PASSWORD.',
+          );
+        }
 
         await getClientFromContext();
 

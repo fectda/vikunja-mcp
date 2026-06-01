@@ -466,18 +466,55 @@ describe('Export Tool', () => {
       );
     });
 
-    it('should validate password parameter', async () => {
+    it('should accept optional password with env var fallback', async () => {
       // Test that the schema is properly defined
       const toolCall = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_request_user_export',
       );
 
       expect(toolCall).toBeDefined();
-      expect(toolCall?.[2]).toMatchObject({
-        password: expect.objectContaining({
-          minLength: 1,
+      expect(toolCall?.[2]).toHaveProperty('password');
+    });
+
+    it('should fall back to VIKUNJA_EXPORT_PASSWORD env var when password not provided', async () => {
+      const originalEnv = process.env.VIKUNJA_EXPORT_PASSWORD;
+      process.env.VIKUNJA_EXPORT_PASSWORD = 'env-password';
+
+      jest.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Export requested' }),
+        statusText: 'OK',
+      } as Response);
+
+      const handler = mockServer.tool.mock.calls.find(
+        (call) => call[0] === 'vikunja_request_user_export',
+      )?.[3];
+
+      await handler?.({});
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({ password: 'env-password' }),
         }),
-      });
+      );
+
+      process.env.VIKUNJA_EXPORT_PASSWORD = originalEnv;
+    });
+
+    it('should throw validation error when no password is available', async () => {
+      const originalEnv = process.env.VIKUNJA_EXPORT_PASSWORD;
+      delete process.env.VIKUNJA_EXPORT_PASSWORD;
+
+      const handler = mockServer.tool.mock.calls.find(
+        (call) => call[0] === 'vikunja_request_user_export',
+      )?.[3];
+
+      await expect(handler?.({})).rejects.toThrow(
+        'Password is required for export. Pass it as an argument or set VIKUNJA_EXPORT_PASSWORD.',
+      );
+
+      process.env.VIKUNJA_EXPORT_PASSWORD = originalEnv;
     });
 
     it('should handle JSON parse errors in error response', async () => {
@@ -580,6 +617,47 @@ describe('Export Tool', () => {
           body: JSON.stringify({ password: 'test-password' }),
         }),
       );
+    });
+
+    it('should fall back to VIKUNJA_EXPORT_PASSWORD for download', async () => {
+      const originalEnv = process.env.VIKUNJA_EXPORT_PASSWORD;
+      process.env.VIKUNJA_EXPORT_PASSWORD = 'env-password';
+
+      jest.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Download ready' }),
+        statusText: 'OK',
+      } as Response);
+
+      const handler = mockServer.tool.mock.calls.find(
+        (call) => call[0] === 'vikunja_download_user_export',
+      )?.[3];
+
+      await handler?.({});
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({ password: 'env-password' }),
+        }),
+      );
+
+      process.env.VIKUNJA_EXPORT_PASSWORD = originalEnv;
+    });
+
+    it('should throw validation error when no password for download', async () => {
+      const originalEnv = process.env.VIKUNJA_EXPORT_PASSWORD;
+      delete process.env.VIKUNJA_EXPORT_PASSWORD;
+
+      const handler = mockServer.tool.mock.calls.find(
+        (call) => call[0] === 'vikunja_download_user_export',
+      )?.[3];
+
+      await expect(handler?.({})).rejects.toThrow(
+        'Password is required for export. Pass it as an argument or set VIKUNJA_EXPORT_PASSWORD.',
+      );
+
+      process.env.VIKUNJA_EXPORT_PASSWORD = originalEnv;
     });
 
     it('should handle API errors when downloading export', async () => {
