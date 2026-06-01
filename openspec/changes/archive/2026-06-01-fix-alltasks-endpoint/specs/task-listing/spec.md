@@ -1,14 +1,11 @@
-# Task Listing Specification
+# Delta for task-listing
 
-## Purpose
-
-This spec defines the behavior for retrieving a list of tasks across all projects using the Vikunja API, specifically addressing the deprecation of the `/tasks/all` endpoint in favor of the `/tasks` endpoint.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Task Listing Retrieval
 
 The system MUST retrieve a list of tasks using the correct `/tasks` endpoint by appending `/tasks` to the configured `baseUrl` (which already contains the `/api/v1` path), bypassing the deprecated `/tasks/all` endpoint hardcoded in `node-vikunja`.
+(Previously: The system MUST retrieve a list of tasks using the `/tasks` endpoint, bypassing the deprecated `/tasks/all` endpoint hardcoded in `node-vikunja`.)
 
 #### Scenario: Successful Task Retrieval
 

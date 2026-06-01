@@ -544,7 +544,7 @@ describe('VikunjaClientFactory', () => {
 
       const searchParams = new URLSearchParams(params as any);
       expect(global.fetch).toHaveBeenCalledWith(
-        `https://test.vikunja.com/api/v1/tasks?${searchParams.toString()}`,
+        `https://test.vikunja.com/tasks?${searchParams.toString()}`,
         {
           headers: {
             Authorization: 'Bearer test-token-123',
@@ -552,6 +552,36 @@ describe('VikunjaClientFactory', () => {
           },
         },
       );
+
+      // Clean up mock
+      (global.fetch as jest.Mock).mockRestore();
+    });
+
+    it('should strip trailing slashes from the API URL when constructing tasks URL', async () => {
+      const session = {
+        apiUrl: 'https://test.vikunja.com/api/v1/', // Note trailing slash
+        apiToken: 'test-token-123',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      // Mock global fetch
+      const mockFetchResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 2, title: 'Test Task 2' }]),
+      };
+      global.fetch = jest.fn().mockResolvedValue(mockFetchResponse as any);
+
+      const client = factory.getClient();
+
+      await client.tasks.getAllTasks();
+
+      expect(global.fetch).toHaveBeenCalledWith('https://test.vikunja.com/api/v1/tasks', {
+        headers: {
+          Authorization: 'Bearer test-token-123',
+          'Content-Type': 'application/json',
+        },
+      });
 
       // Clean up mock
       (global.fetch as jest.Mock).mockRestore();

@@ -51,7 +51,7 @@ export class VikunjaClientFactory {
         ): Promise<unknown> => {
           const baseUrl = this.currentApiUrl || '';
           const token = this.currentApiToken || '';
-          const url = new URL(`${baseUrl}/api/v1/tasks`);
+          const url = new URL(`${baseUrl.replace(/\/+$/, '')}/tasks`);
 
           if (params) {
             const searchParams = new URLSearchParams(params);
