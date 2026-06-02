@@ -120,7 +120,9 @@ describe('Tasks Tool - Reminders', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
+      tool: jest.fn() as jest.MockedFunction<
+        (name: string, description: string, schema: any, handler: any) => void
+      >,
     } as any;
 
     (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
@@ -130,7 +132,7 @@ describe('Tasks Tool - Reminders', () => {
     // Get the tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_tasks',
-      'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations)',
+      'THE task management tool: create, get, update, delete, list, assign/unassign users, add/list/remove labels, add/list/remove comments, add/list/remove reminders, relate/unrelate tasks, attach files, and bulk operations. Use for ALL task operations. This is the ONLY task tool you need. Note: id is required for get, update, delete, assign, unassign, comment, relate, unrelate, add-reminder, remove-reminder, list-assignees, list-reminders, list-labels, apply-label, and remove-label subcommands.',
       expect.any(Object),
       expect.any(Function),
     );
@@ -173,7 +175,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('add-reminder');
       expect(markdown).toContain('Reminder added successfully');
     });
@@ -205,7 +207,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('add-reminder');
     });
 
@@ -261,7 +263,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('remove-reminder');
       expect(markdown).toContain('Reminder 1 removed successfully');
     });
@@ -290,7 +292,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('remove-reminder');
     });
 
@@ -345,7 +347,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('list-reminders');
       expect(markdown).toContain('Found 2 reminder(s)');
     });
@@ -359,7 +361,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Found 0 reminder(s)');
     });
 

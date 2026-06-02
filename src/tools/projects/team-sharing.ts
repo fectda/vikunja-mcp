@@ -3,10 +3,7 @@
  * Handles team-based project sharing operations (different from link sharing)
  */
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
 import type { AuthManager } from '../../auth/AuthManager';
-import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../../types';
 import { getClientFromContext } from '../../client';
 import { wrapToolError } from '../../utils/error-handler';
@@ -51,7 +48,7 @@ export interface RemoveTeamShareArgs {
 /**
  * Convert permission to numeric value
  */
-function normalizeRight(right: 'read' | 'write' | 'admin' | 0 | 1 | 2): number {
+export function normalizeRight(right: 'read' | 'write' | 'admin' | 0 | 1 | 2): number {
   if (typeof right === 'number') {
     if (![0, 1, 2].includes(right)) {
       throw new MCPError(
@@ -82,7 +79,10 @@ function normalizeRight(right: 'read' | 'write' | 'admin' | 0 | 1 | 2): number {
  * 1. PUT /projects/{id}/teams with {team_id: id} -> creates share (default permission=0/read)
  * 2. POST /projects/{id}/teams/{teamId} with {permission: right} -> updates to desired permission
  */
-async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise<McpResponse> {
+export async function shareTeam(
+  args: ShareTeamArgs,
+  authManager: AuthManager,
+): Promise<McpResponse> {
   const { projectId, teamId, right } = args;
 
   try {
@@ -201,7 +201,7 @@ async function shareTeam(args: ShareTeamArgs, authManager: AuthManager): Promise
 /**
  * List all team shares for a project
  */
-async function listTeamShares(
+export async function listTeamShares(
   args: ListTeamSharesArgs,
   authManager: AuthManager,
 ): Promise<McpResponse> {
@@ -273,7 +273,7 @@ async function listTeamShares(
 /**
  * Get a specific team share
  */
-async function getTeamShare(
+export async function getTeamShare(
   args: GetTeamShareArgs,
   authManager: AuthManager,
 ): Promise<McpResponse> {
@@ -347,7 +347,7 @@ async function getTeamShare(
  *
  * For existing shares, use POST with "permission" field (NOT PUT with "right")
  */
-async function updateTeamShare(
+export async function updateTeamShare(
   args: UpdateTeamShareArgs,
   authManager: AuthManager,
 ): Promise<McpResponse> {
@@ -423,7 +423,7 @@ async function updateTeamShare(
 /**
  * Remove a team share from a project
  */
-async function removeTeamShare(
+export async function removeTeamShare(
   args: RemoveTeamShareArgs,
   authManager: AuthManager,
 ): Promise<McpResponse> {
@@ -487,177 +487,3 @@ async function removeTeamShare(
   }
 }
 
-/**
- * Register the team sharing tool with the MCP server
- */
-export function registerProjectTeamSharingTool(
-  server: McpServer,
-  authManager: AuthManager,
-  _clientFactory?: VikunjaClientFactory,
-): void {
-  server.tool(
-    'vikunja_projects_team_sharing',
-    'Manage team-based project sharing (share-team, list-team-shares, get-team-share, update-team-share, remove-team-share)',
-    {
-      subcommand: z.enum([
-        'share-team',
-        'list-team-shares',
-        'get-team-share',
-        'update-team-share',
-        'remove-team-share',
-      ]),
-      projectId: z.number().positive().optional(),
-      teamId: z.number().positive().optional(),
-      right: z.union([z.enum(['read', 'write', 'admin']), z.number()]).optional(),
-      page: z.number().min(1).optional(),
-      perPage: z.number().min(1).max(100).optional(),
-      verbosity: z.enum(['minimal', 'standard', 'detailed']).optional(),
-      useOptimizedFormat: z.boolean().optional(),
-      useAorp: z.boolean().optional(),
-    },
-    async (args) => {
-      if (!authManager.isAuthenticated()) {
-        throw new MCPError(
-          ErrorCode.AUTH_REQUIRED,
-          'Authentication required. Please use vikunja_auth.connect first.',
-        );
-      }
-
-      try {
-        const result = await (async (): Promise<McpResponse> => {
-          switch (args.subcommand) {
-            case 'share-team': {
-              if (!args.projectId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for share-team operation',
-                );
-              }
-              if (!args.teamId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Team ID is required for share-team operation',
-                );
-              }
-              if (args.right === undefined) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Permission right is required for share-team operation',
-                );
-              }
-              return await shareTeam(
-                {
-                  projectId: args.projectId,
-                  teamId: args.teamId,
-                  right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
-                },
-                authManager,
-              );
-            }
-
-            case 'list-team-shares': {
-              if (!args.projectId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for list-team-shares operation',
-                );
-              }
-              const listArgs: ListTeamSharesArgs = { projectId: args.projectId };
-              if (args.page !== undefined) listArgs.page = args.page;
-              if (args.perPage !== undefined) listArgs.perPage = args.perPage;
-              return await listTeamShares(listArgs, authManager);
-            }
-
-            case 'get-team-share': {
-              if (!args.projectId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for get-team-share operation',
-                );
-              }
-              if (!args.teamId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Team ID is required for get-team-share operation',
-                );
-              }
-              return await getTeamShare(
-                {
-                  projectId: args.projectId,
-                  teamId: args.teamId,
-                },
-                authManager,
-              );
-            }
-
-            case 'update-team-share': {
-              if (!args.projectId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for update-team-share operation',
-                );
-              }
-              if (!args.teamId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Team ID is required for update-team-share operation',
-                );
-              }
-              if (args.right === undefined) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Permission right is required for update-team-share operation',
-                );
-              }
-              return await updateTeamShare(
-                {
-                  projectId: args.projectId,
-                  teamId: args.teamId,
-                  right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
-                },
-                authManager,
-              );
-            }
-
-            case 'remove-team-share': {
-              if (!args.projectId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for remove-team-share operation',
-                );
-              }
-              if (!args.teamId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Team ID is required for remove-team-share operation',
-                );
-              }
-              return await removeTeamShare(
-                {
-                  projectId: args.projectId,
-                  teamId: args.teamId,
-                },
-                authManager,
-              );
-            }
-
-            default:
-              throw new MCPError(
-                ErrorCode.VALIDATION_ERROR,
-                `Unknown subcommand: ${String(args.subcommand)}`,
-              );
-          }
-        })();
-
-        return result;
-      } catch (error) {
-        throw wrapToolError(
-          error,
-          'vikunja_projects_team_sharing',
-          String(args.subcommand),
-          args.projectId || args.teamId,
-        );
-      }
-    },
-  );
-}

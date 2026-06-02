@@ -17,7 +17,6 @@
 // Re-export all functionality from the modular structure
 export {
   registerProjectsTool, // This is the backward compatibility single-tool function
-  registerProjectTools, // This is the new multi-tool function
   listProjects,
   getProject,
   createProject,
@@ -48,7 +47,7 @@ export {
   type ListSharesArgs,
   type GetShareArgs,
   type DeleteShareArgs,
-  type AuthShareArgs
+  type AuthShareArgs,
 } from './projects/index';
 
 // Re-export validation utilities for external use
@@ -59,7 +58,7 @@ export {
   calculateProjectDepth,
   getMaxSubtreeDepth,
   validateMoveConstraints,
-  MAX_PROJECT_DEPTH
+  MAX_PROJECT_DEPTH,
 } from './projects/validation';
 
 // Re-export response formatters for external use
@@ -68,5 +67,5 @@ export {
   createProjectSuccessResponse,
   createProjectListResponse,
   createProjectTreeResponse,
-  createBreadcrumbResponse
+  createBreadcrumbResponse,
 } from './projects/response-formatter';

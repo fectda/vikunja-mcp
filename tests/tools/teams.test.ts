@@ -884,7 +884,7 @@ describe('Teams Tool', () => {
     it('should register the vikunja_teams tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_teams',
-        'Manage teams and team memberships for collaborative project management',
+        'Manage teams and team memberships: create, list, get, update, delete teams, and manage members (add, remove, list, update admin status). Use when the user wants to organize users into teams for project sharing. Returns team data with member list and permissions.',
         expect.any(Object), // Zod schema
         expect.any(Function), // Handler function
       );

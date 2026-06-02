@@ -26,7 +26,6 @@ import { registerTemplatesTool } from './templates';
 import { registerWebhooksTool } from './webhooks';
 import { registerBatchImportTool } from './batch-import';
 import { registerExportTool } from './export';
-import { registerProjectTeamSharingTool } from './projects/team-sharing';
 
 // Re-export for testing
 export {
@@ -41,7 +40,6 @@ export {
   registerWebhooksTool,
   registerBatchImportTool,
   registerExportTool,
-  registerProjectTeamSharingTool,
 };
 
 export function registerTools(
@@ -73,9 +71,6 @@ export function registerTools(
 
     // Register batch import tool
     registerBatchImportTool(server, authManager, clientFactory);
-
-    // Register team sharing tool
-    registerProjectTeamSharingTool(server, authManager, clientFactory);
 
     // Register user and export tools conditionally (preserving backward compatibility)
     // NOTE: The permission infrastructure is available for future migration

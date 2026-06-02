@@ -56,7 +56,7 @@ describe('Export Tool', () => {
     it('should register the export project tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_export_project',
-        'Export project data including tasks, labels, and metadata in structured format',
+        'Export a project data including tasks, labels, and metadata in structured format. Use when the user wants to back up or migrate a project. Optionally include child projects. Returns project data as structured JSON. Requires JWT authentication.',
         expect.objectContaining({
           projectId: expect.any(Object),
           includeChildren: expect.any(Object),
@@ -389,7 +389,7 @@ describe('Export Tool', () => {
     it('should register the request user export tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_request_user_export',
-        'Request a complete export of user data for privacy and backup purposes',
+        'Request a full data export of the authenticated user data for privacy, backup, or migration. Use when the user wants to download all their Vikunja data. The password parameter is optional if VIKUNJA_EXPORT_PASSWORD is set. Returns a confirmation message; the export file is available via vikunja_download_user_export once ready.',
         expect.objectContaining({
           password: expect.any(Object),
         }),
@@ -550,7 +550,7 @@ describe('Export Tool', () => {
     it('should register the download user export tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_download_user_export',
-        'Download previously requested user data export files',
+        'Download a previously requested user data export file. Use AFTER calling vikunja_request_user_export. The password parameter is optional if VIKUNJA_EXPORT_PASSWORD is set. Returns the export file as a download.',
         expect.objectContaining({
           password: expect.any(Object),
         }),

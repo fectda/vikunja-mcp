@@ -193,7 +193,7 @@ describe('Tasks Tool', () => {
     // Get the tasks tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_tasks',
-      'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations)',
+      'THE task management tool: create, get, update, delete, list, assign/unassign users, add/list/remove labels, add/list/remove comments, add/list/remove reminders, relate/unrelate tasks, attach files, and bulk operations. Use for ALL task operations. This is the ONLY task tool you need. Note: id is required for get, update, delete, assign, unassign, comment, relate, unrelate, add-reminder, remove-reminder, list-assignees, list-reminders, list-labels, apply-label, and remove-label subcommands.',
       expect.any(Object),
       expect.any(Function),
     );
@@ -2865,7 +2865,7 @@ describe('Tasks Tool', () => {
     it('should register the vikunja_tasks tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_tasks',
-        'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations)',
+        'THE task management tool: create, get, update, delete, list, assign/unassign users, add/list/remove labels, add/list/remove comments, add/list/remove reminders, relate/unrelate tasks, attach files, and bulk operations. Use for ALL task operations. This is the ONLY task tool you need. Note: id is required for get, update, delete, assign, unassign, comment, relate, unrelate, add-reminder, remove-reminder, list-assignees, list-reminders, list-labels, apply-label, and remove-label subcommands.',
         expect.any(Object),
         expect.any(Function),
       );

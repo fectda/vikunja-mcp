@@ -114,7 +114,7 @@ describe('Batch Import Tool', () => {
       registerBatchImportTool(mockServer, mockAuthManager);
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_batch_import',
-        'Import tasks in bulk from CSV or JSON formats with error handling and dry-run support',
+        'Import tasks in bulk from CSV or JSON format. Use when the user wants to import multiple tasks at once from a file or formatted data. Supports dry-run for preview. Returns import summary with counts of created, skipped, and failed tasks.',
         expect.any(Object),
         expect.any(Function),
       );

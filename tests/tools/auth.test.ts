@@ -79,7 +79,7 @@ describe('Auth Tool', () => {
     // Capture the tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_auth',
-      'Manage authentication with Vikunja API (connect, status, refresh, disconnect, login)',
+      'Manage Vikunja authentication: connect, status, refresh, disconnect, and login with username/password. Use when the user needs to authenticate, check connection status, refresh the session, or disconnect. Returns authentication status and auth type (JWT vs API token). See also: VIKUNJA_API_TOKEN env var for auto-login.',
       expect.any(Object),
       expect.any(Function),
     );

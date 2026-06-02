@@ -1,7 +1,14 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../../src/auth/AuthManager';
-import { registerProjectTeamSharingTool } from '../../../src/tools/projects/team-sharing';
+import { registerProjectsTool } from '../../../src/tools/projects/index';
+import {
+  shareTeam,
+  listTeamShares,
+  getTeamShare,
+  updateTeamShare,
+  removeTeamShare,
+} from '../../../src/tools/projects/team-sharing';
 
 import { getClientFromContext } from '../../../src/client';
 
@@ -46,13 +53,15 @@ describe('Team Sharing Tool', () => {
 
     (getClientFromContext as jest.Mock).mockResolvedValue({});
 
-    registerProjectTeamSharingTool(mockServer, mockAuthManager);
+    registerProjectsTool(mockServer, mockAuthManager);
 
     const calls = mockServer.tool.mock.calls;
-    if (calls.length > 0 && calls[0] && calls[0].length > 3) {
-      toolHandler = calls[0][3];
+    const projectToolCall = calls.find((c) => c[0] === 'vikunja_projects');
+
+    if (projectToolCall && projectToolCall.length > 3) {
+      toolHandler = projectToolCall[3];
     } else {
-      throw new Error('Tool handler not found');
+      throw new Error('vikunja_projects tool handler not found');
     }
   });
 
@@ -397,6 +406,476 @@ describe('Team Sharing Tool', () => {
       const secondCallBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
       expect(secondCallBody).toHaveProperty('permission');
       expect(secondCallBody.permission).toBe(1); // NUMBER: 0=read, 1=write, 2=admin
+    });
+  });
+
+  describe('share-team error handling', () => {
+    beforeEach(() => {
+      // Ensure auth always works for error tests
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getSession.mockReturnValue({
+        apiUrl: 'https://vikunja.example.com/api/v1',
+        apiToken: 'test-token',
+      });
+    });
+
+    afterEach(() => {
+      delete (global as any).fetch;
+    });
+
+    it('should handle 404 from project create response and check if project exists', async () => {
+      // First call returns 404, then project check returns 200 (project exists)
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          text: jest.fn().mockResolvedValue('Not found'),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: jest.fn().mockResolvedValue({ id: 1 }),
+        });
+
+      await expect(
+        callTool('share-team', { projectId: 1, teamId: 5, right: 'read' }),
+      ).rejects.toThrow('Team with ID 5 not found');
+    });
+
+    it('should handle 404 when project does not exist', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          text: jest.fn().mockResolvedValue('Not found'),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          text: jest.fn().mockResolvedValue('Not found'),
+        });
+
+      await expect(
+        callTool('share-team', { projectId: 1, teamId: 5, right: 'read' }),
+      ).rejects.toThrow('Project with ID 1 not found');
+    });
+
+    it('should handle 403 permission denied', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: jest.fn().mockResolvedValue('Forbidden'),
+      });
+
+      await expect(
+        callTool('share-team', { projectId: 1, teamId: 5, right: 'read' }),
+      ).rejects.toThrow("You don't have permission to share project 1");
+    });
+
+    it('should handle generic API error on share creation', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: jest.fn().mockResolvedValue('Internal server error'),
+      });
+
+      await expect(
+        callTool('share-team', { projectId: 1, teamId: 5, right: 'read' }),
+      ).rejects.toThrow('Failed to share project with team');
+    });
+
+    it('should handle step 2 upgrade error', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: jest.fn().mockResolvedValue({ team_id: 5, right: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          text: jest.fn().mockResolvedValue('Permission update failed'),
+        });
+
+      await expect(callTool('share-team', { projectId: 1, teamId: 5, right: 2 })).rejects.toThrow(
+        'Failed to update team share permissions',
+      );
+    });
+  });
+
+  describe('list-team-shares subcommand', () => {
+    beforeEach(() => {
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getSession.mockReturnValue({
+        apiUrl: 'https://vikunja.example.com/api/v1',
+        apiToken: 'test-token',
+      });
+    });
+
+    afterEach(() => {
+      delete (global as any).fetch;
+    });
+
+    it('should list team shares successfully', async () => {
+      const mockShares = [
+        { team: { id: 1, name: 'Team Alpha' }, right: 0 },
+        { team: { id: 2, name: 'Team Beta' }, right: 2 },
+      ];
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue(mockShares),
+      });
+
+      const result = await callTool('list-team-shares', { projectId: 1 });
+
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(typeof result.content[0].text).toBe('string');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('should include pagination params when non-default', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue([]),
+      });
+
+      await callTool('list-team-shares', { projectId: 1, page: 2, perPage: 10 });
+
+      const callUrl = (global.fetch as jest.Mock).mock.calls[0][0];
+      expect(callUrl).toContain('page=2');
+      expect(callUrl).toContain('per_page=10');
+    });
+
+    it('should handle 404', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: jest.fn().mockResolvedValue('Not found'),
+      });
+
+      await expect(callTool('list-team-shares', { projectId: 999 })).rejects.toThrow(
+        'Project with ID 999 not found',
+      );
+    });
+
+    it('should handle generic API error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: jest.fn().mockResolvedValue('Server error'),
+      });
+
+      await expect(callTool('list-team-shares', { projectId: 1 })).rejects.toThrow(
+        'Failed to list team shares',
+      );
+    });
+  });
+
+  describe('get-team-share subcommand', () => {
+    beforeEach(() => {
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getSession.mockReturnValue({
+        apiUrl: 'https://vikunja.example.com/api/v1',
+        apiToken: 'test-token',
+      });
+    });
+
+    afterEach(() => {
+      delete (global as any).fetch;
+    });
+
+    it('should get a team share successfully', async () => {
+      const mockShare = { team: { id: 5, name: 'Team Five' }, right: 1 };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue(mockShare),
+      });
+
+      const result = await callTool('get-team-share', { projectId: 1, teamId: 5 });
+
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(typeof result.content[0].text).toBe('string');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('should handle 404', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: jest.fn().mockResolvedValue('Not found'),
+      });
+
+      await expect(callTool('get-team-share', { projectId: 1, teamId: 99 })).rejects.toThrow(
+        'Team share not found for team 99 on project 1',
+      );
+    });
+
+    it('should handle generic API error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: jest.fn().mockResolvedValue('Server error'),
+      });
+
+      await expect(callTool('get-team-share', { projectId: 1, teamId: 5 })).rejects.toThrow(
+        'Failed to get team share',
+      );
+    });
+  });
+
+  describe('update-team-share subcommand', () => {
+    beforeEach(() => {
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getSession.mockReturnValue({
+        apiUrl: 'https://vikunja.example.com/api/v1',
+        apiToken: 'test-token',
+      });
+    });
+
+    afterEach(() => {
+      delete (global as any).fetch;
+    });
+
+    it('should update team share permissions successfully', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({ right: 2 }),
+      });
+
+      const result = await callTool('update-team-share', {
+        projectId: 1,
+        teamId: 5,
+        right: 'admin',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(typeof result.content[0].text).toBe('string');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ permission: 2 }),
+        }),
+      );
+    });
+
+    it('should handle 404 on update', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: jest.fn().mockResolvedValue('Not found'),
+      });
+
+      await expect(
+        callTool('update-team-share', { projectId: 1, teamId: 99, right: 'write' }),
+      ).rejects.toThrow('Team share not found for team 99 on project 1');
+    });
+
+    it('should handle generic API error on update', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: jest.fn().mockResolvedValue('Server error'),
+      });
+
+      await expect(
+        callTool('update-team-share', { projectId: 1, teamId: 5, right: 'write' }),
+      ).rejects.toThrow('Failed to update team share');
+    });
+  });
+
+  describe('remove-team-share subcommand', () => {
+    beforeEach(() => {
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getSession.mockReturnValue({
+        apiUrl: 'https://vikunja.example.com/api/v1',
+        apiToken: 'test-token',
+      });
+    });
+
+    afterEach(() => {
+      delete (global as any).fetch;
+    });
+
+    it('should remove team share successfully', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({}),
+      });
+
+      const result = await callTool('remove-team-share', { projectId: 1, teamId: 5 });
+
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(typeof result.content[0].text).toBe('string');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('should handle 404', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: jest.fn().mockResolvedValue('Not found'),
+      });
+
+      await expect(callTool('remove-team-share', { projectId: 1, teamId: 99 })).rejects.toThrow(
+        'Team share not found for team 99 on project 1',
+      );
+    });
+
+    it('should handle generic API error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: jest.fn().mockResolvedValue('Server error'),
+      });
+
+      await expect(callTool('remove-team-share', { projectId: 1, teamId: 5 })).rejects.toThrow(
+        'Failed to remove team share',
+      );
+    });
+  });
+
+  describe('defensive validation (direct handler call, bypassing Zod)', () => {
+    const mockAuth = {
+      isAuthenticated: () => true,
+      getSession: () => ({
+        apiUrl: 'https://vikunja.example.com/api/v1',
+        apiToken: 'test-token',
+      }),
+    } as unknown as AuthManager;
+
+    afterEach(() => {
+      delete (global as any).fetch;
+    });
+
+    it('shareTeam rejects non-positive projectId', async () => {
+      await expect(shareTeam({ projectId: 0, teamId: 5, right: 'read' }, mockAuth)).rejects.toThrow(
+        'Project ID must be a positive integer',
+      );
+    });
+
+    it('shareTeam rejects non-positive teamId', async () => {
+      await expect(shareTeam({ projectId: 1, teamId: 0, right: 'read' }, mockAuth)).rejects.toThrow(
+        'Team ID must be a positive integer',
+      );
+    });
+
+    it('shareTeam rejects missing right', async () => {
+      await expect(
+        shareTeam({ projectId: 1, teamId: 5, right: undefined as any }, mockAuth),
+      ).rejects.toThrow('Permission right is required');
+    });
+
+    it('shareTeam wraps unexpected error via wrapToolError', async () => {
+      // Mock getClientFromContext to throw a non-MCP error
+      (getClientFromContext as jest.Mock).mockRejectedValueOnce(
+        new Error('Unexpected network error'),
+      );
+
+      await expect(shareTeam({ projectId: 1, teamId: 5, right: 'read' }, mockAuth)).rejects.toThrow(
+        'Unexpected network error',
+      );
+    });
+
+    it('listTeamShares rejects non-positive projectId', async () => {
+      await expect(listTeamShares({ projectId: 0 }, mockAuth)).rejects.toThrow(
+        'Project ID must be a positive integer',
+      );
+    });
+
+    it('listTeamShares wraps unexpected error', async () => {
+      (getClientFromContext as jest.Mock).mockRejectedValueOnce(new Error('Network failure'));
+
+      await expect(listTeamShares({ projectId: 1 }, mockAuth)).rejects.toThrow('Network failure');
+    });
+
+    it('getTeamShare rejects non-positive projectId', async () => {
+      await expect(getTeamShare({ projectId: 0, teamId: 5 }, mockAuth)).rejects.toThrow(
+        'Project ID must be a positive integer',
+      );
+    });
+
+    it('getTeamShare rejects non-positive teamId', async () => {
+      await expect(getTeamShare({ projectId: 1, teamId: 0 }, mockAuth)).rejects.toThrow(
+        'Team ID must be a positive integer',
+      );
+    });
+
+    it('getTeamShare wraps unexpected error', async () => {
+      (getClientFromContext as jest.Mock).mockRejectedValueOnce(new Error('Network failure'));
+
+      await expect(getTeamShare({ projectId: 1, teamId: 5 }, mockAuth)).rejects.toThrow(
+        'Network failure',
+      );
+    });
+
+    it('updateTeamShare rejects non-positive projectId', async () => {
+      await expect(
+        updateTeamShare({ projectId: 0, teamId: 5, right: 'read' }, mockAuth),
+      ).rejects.toThrow('Project ID must be a positive integer');
+    });
+
+    it('updateTeamShare rejects non-positive teamId', async () => {
+      await expect(
+        updateTeamShare({ projectId: 1, teamId: 0, right: 'read' }, mockAuth),
+      ).rejects.toThrow('Team ID must be a positive integer');
+    });
+
+    it('updateTeamShare rejects missing right', async () => {
+      await expect(
+        updateTeamShare({ projectId: 1, teamId: 5, right: undefined as any }, mockAuth),
+      ).rejects.toThrow('Permission right is required');
+    });
+
+    it('updateTeamShare wraps unexpected error', async () => {
+      (getClientFromContext as jest.Mock).mockRejectedValueOnce(new Error('Network failure'));
+
+      await expect(
+        updateTeamShare({ projectId: 1, teamId: 5, right: 'write' }, mockAuth),
+      ).rejects.toThrow('Network failure');
+    });
+
+    it('removeTeamShare rejects non-positive projectId', async () => {
+      await expect(removeTeamShare({ projectId: 0, teamId: 5 }, mockAuth)).rejects.toThrow(
+        'Project ID must be a positive integer',
+      );
+    });
+
+    it('removeTeamShare rejects non-positive teamId', async () => {
+      await expect(removeTeamShare({ projectId: 1, teamId: 0 }, mockAuth)).rejects.toThrow(
+        'Team ID must be a positive integer',
+      );
+    });
+
+    it('removeTeamShare wraps unexpected error', async () => {
+      (getClientFromContext as jest.Mock).mockRejectedValueOnce(new Error('Network failure'));
+
+      await expect(removeTeamShare({ projectId: 1, teamId: 5 }, mockAuth)).rejects.toThrow(
+        'Network failure',
+      );
     });
   });
 });

@@ -453,7 +453,7 @@ describe('Users Tool', () => {
     it('should register the vikunja_users tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_users',
-        'Manage user profiles, search users, and update user settings',
+        'Manage user profiles: get current user, search users, view and update settings and notification preferences. Use when the user asks about their profile, wants to find other users, or change settings like language, timezone, or email reminders. Requires JWT authentication. Returns user data with profile and settings.',
         expect.any(Object), // Zod schema
         expect.any(Function), // Handler function
       );
