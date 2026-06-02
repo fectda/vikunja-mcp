@@ -77,7 +77,7 @@ export function registerProjectsTool(
 ): void {
   server.tool(
     'vikunja_projects',
-    'THE project management tool: list, get, create, update, delete, archive/unarchive, get hierarchy (children, tree, breadcrumb), move projects, and manage sharing (create/list/get/delete shares, auth-share, team sharing). Use for ALL project operations. This is the ONLY project tool you need. For team sharing, use subcommand share-team with right: read|write|admin.',
+    'THE project management tool: list, get, create, update, delete, archive/unarchive, get hierarchy (children, tree, breadcrumb), move projects, and manage sharing (create/list/get/delete shares, auth-share, team sharing). Use for ALL project operations. This is the ONLY project tool you need. For team sharing, use subcommand share-team with right: read|write|admin. Note: id is required for get, update, delete, archive, unarchive, get-children, get-breadcrumb, and move subcommands. projectId is required for create-share, list-shares, share-team, list-team-shares, get-team-share, update-team-share, and remove-team-share.',
     {
       subcommand: z.enum([
         'list',

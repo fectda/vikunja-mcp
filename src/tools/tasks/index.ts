@@ -212,7 +212,7 @@ export function registerTasksTool(
 ): void {
   server.tool(
     'vikunja_tasks',
-    'THE task management tool: create, get, update, delete, list, assign/unassign users, add/list/remove labels, add/list/remove comments, add/list/remove reminders, relate/unrelate tasks, attach files, and bulk operations. Use for ALL task operations. This is the ONLY task tool you need.',
+    'THE task management tool: create, get, update, delete, list, assign/unassign users, add/list/remove labels, add/list/remove comments, add/list/remove reminders, relate/unrelate tasks, attach files, and bulk operations. Use for ALL task operations. This is the ONLY task tool you need. Note: id is required for get, update, delete, assign, unassign, comment, relate, unrelate, add-reminder, remove-reminder, list-assignees, list-reminders, list-labels, apply-label, and remove-label subcommands.',
     {
       subcommand: z.enum([
         'create',
