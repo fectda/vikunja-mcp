@@ -134,7 +134,7 @@ export function registerFiltersTool(
 ): void {
   server.tool(
     'vikunja_filters',
-    'Manage and build advanced filters for tasks and projects with validation',
+    'Manage saved filters and build filter conditions for tasks and projects. Use when the user wants to list, create, update, delete saved filters, or build a filter string from conditions (field, operator, value). For building, pass conditions as a top-level array alongside action: "build". Returns filter data or a valid filter string.',
     {
       action: z.enum(['list', 'get', 'create', 'update', 'delete', 'build', 'validate']),
       parameters: z.record(z.unknown()).optional(),

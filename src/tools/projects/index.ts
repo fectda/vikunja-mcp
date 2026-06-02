@@ -53,6 +53,19 @@ import {
   type AuthShareArgs,
 } from './sharing';
 
+import {
+  shareTeam,
+  listTeamShares,
+  getTeamShare,
+  updateTeamShare,
+  removeTeamShare,
+  type ShareTeamArgs,
+  type ListTeamSharesArgs,
+  type GetTeamShareArgs,
+  type UpdateTeamShareArgs,
+  type RemoveTeamShareArgs,
+} from './team-sharing';
+
 /**
  * Legacy single-tool interface for backward compatibility
  * Registers a single tool with all subcommands like the original implementation
@@ -64,7 +77,7 @@ export function registerProjectsTool(
 ): void {
   server.tool(
     'vikunja_projects',
-    'Manage projects with full CRUD operations, hierarchy management, and sharing capabilities',
+    'THE project management tool: list, get, create, update, delete, archive/unarchive, get hierarchy (children, tree, breadcrumb), move projects, and manage sharing (create/list/get/delete shares, auth-share, team sharing). Use for ALL project operations. This is the ONLY project tool you need. For team sharing, use subcommand share-team with right: read|write|admin.',
     {
       subcommand: z.enum([
         'list',
@@ -83,6 +96,11 @@ export function registerProjectsTool(
         'get-share',
         'delete-share',
         'auth-share',
+        'share-team',
+        'list-team-shares',
+        'get-team-share',
+        'update-team-share',
+        'remove-team-share',
       ]),
       // CRUD arguments
       id: z.number().positive().optional(),
@@ -103,8 +121,9 @@ export function registerProjectsTool(
       // Sharing arguments
       projectId: z.number().positive().optional(),
       shareId: z.string().optional(),
+      teamId: z.number().positive().optional(),
       shareHash: z.string().optional(),
-      right: z.enum(['read', 'write', 'admin']).optional(),
+      right: z.union([z.enum(['read', 'write', 'admin']), z.number()]).optional(),
       name: z.string().optional(),
       password: z.string().optional(),
       shares: z.number().min(1).optional(),
@@ -266,6 +285,89 @@ export function registerProjectsTool(
               return await authProjectShare(authShareArgs);
             }
 
+            // Team sharing operations
+            case 'share-team': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.teamId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
+              }
+              if (args.right === undefined) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Permission right is required');
+              }
+              return await shareTeam(
+                {
+                  projectId: args.projectId,
+                  teamId: args.teamId,
+                  right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
+                },
+                authManager,
+              );
+            }
+
+            case 'list-team-shares': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              const listArgs: ListTeamSharesArgs = { projectId: args.projectId };
+              if (args.page !== undefined) listArgs.page = args.page;
+              if (args.perPage !== undefined) listArgs.perPage = args.perPage;
+              return await listTeamShares(listArgs, authManager);
+            }
+
+            case 'get-team-share': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.teamId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
+              }
+              return await getTeamShare(
+                {
+                  projectId: args.projectId,
+                  teamId: args.teamId,
+                },
+                authManager,
+              );
+            }
+
+            case 'update-team-share': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.teamId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
+              }
+              if (args.right === undefined) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Permission right is required');
+              }
+              return await updateTeamShare(
+                {
+                  projectId: args.projectId,
+                  teamId: args.teamId,
+                  right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
+                },
+                authManager,
+              );
+            }
+
+            case 'remove-team-share': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.teamId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
+              }
+              return await removeTeamShare(
+                {
+                  projectId: args.projectId,
+                  teamId: args.teamId,
+                },
+                authManager,
+              );
+            }
+
             default:
               throw new MCPError(
                 ErrorCode.VALIDATION_ERROR,
@@ -277,282 +379,6 @@ export function registerProjectsTool(
         return result;
       } catch (error) {
         throw wrapToolError(error, 'vikunja_projects', args.subcommand, args.id);
-      }
-    },
-  );
-}
-
-/**
- * Registers separate project tools with the MCP server (new modular interface)
- * Use registerProjectsTool for backward compatibility
- */
-export function registerProjectTools(
-  server: McpServer,
-  _authManager: AuthManager,
-  _clientFactory: VikunjaClientFactory,
-): void {
-  // CRUD Operations
-  server.tool(
-    'vikunja_projects_crud',
-    'Project CRUD operations (list, get, create, update, delete, archive, unarchive)',
-    {
-      subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'archive', 'unarchive']),
-      id: z.number().optional(),
-      title: z.string().optional(),
-      description: z.string().optional(),
-      identifier: z.string().optional(), // NEW: project identifier
-      parentProjectId: z.number().optional(),
-      isArchived: z.boolean().optional(),
-      hexColor: z
-        .string()
-        .regex(/^#[0-9A-Fa-f]{6}$/)
-        .optional(),
-      page: z.number().min(1).optional(),
-      perPage: z.number().min(1).max(100).optional(),
-      search: z.string().optional(),
-      verbosity: z.enum(['minimal', 'standard', 'detailed']).optional(),
-      useOptimizedFormat: z.boolean().optional(),
-      useAorp: z.boolean().optional(),
-    },
-    async (args, _context) => {
-      try {
-        const result = await (async (): Promise<McpResponse> => {
-          switch (args.subcommand) {
-            case 'list':
-              return await listProjects(args as ListProjectsArgs);
-
-            case 'get':
-              if (args.id === undefined || args.id === null) {
-                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
-              }
-              validateId(args.id, 'id');
-              return await getProject(args as GetProjectArgs);
-
-            case 'create':
-              if (!args.title) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project title is required for create operation',
-                );
-              }
-              return await createProject(args as CreateProjectArgs);
-
-            case 'update':
-              if (!args.id) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for update operation',
-                );
-              }
-              return await updateProject(args as UpdateProjectArgs);
-
-            case 'delete':
-              if (!args.id) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for delete operation',
-                );
-              }
-              return await deleteProject(args as DeleteProjectArgs);
-
-            case 'archive':
-              if (!args.id) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for archive operation',
-                );
-              }
-              return await archiveProject(args as ArchiveProjectArgs);
-
-            case 'unarchive':
-              if (!args.id) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for unarchive operation',
-                );
-              }
-              return await unarchiveProject(args as ArchiveProjectArgs);
-
-            default:
-              throw new MCPError(
-                ErrorCode.VALIDATION_ERROR,
-                `Unknown CRUD subcommand: ${String(args.subcommand)}`,
-              );
-          }
-        })();
-
-        return result;
-      } catch (error) {
-        throw wrapToolError(error, 'vikunja_projects_crud', args.subcommand, args.id);
-      }
-    },
-  );
-
-  // Hierarchy Operations
-  server.tool(
-    'vikunja_projects_hierarchy',
-    'Project hierarchy operations (children, tree, breadcrumb, move)',
-    {
-      subcommand: z.enum(['children', 'tree', 'breadcrumb', 'move']),
-      id: z.number().optional(),
-      maxDepth: z.number().min(1).max(20).optional(),
-      includeArchived: z.boolean().optional(),
-      parentProjectId: z.number().optional(),
-      verbosity: z.enum(['minimal', 'standard', 'detailed']).optional(),
-      useOptimizedFormat: z.boolean().optional(),
-      useAorp: z.boolean().optional(),
-    },
-    async (args, context) => {
-      try {
-        const result = await (async (): Promise<McpResponse> => {
-          switch (args.subcommand) {
-            case 'children':
-              if (!args.id) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for children operation',
-                );
-              }
-              return await getProjectChildren(args as GetChildrenArgs, context);
-
-            case 'tree':
-              return await getProjectTree(args as GetTreeArgs, context);
-
-            case 'breadcrumb':
-              if (!args.id) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for breadcrumb operation',
-                );
-              }
-              return await getProjectBreadcrumb(args as GetBreadcrumbArgs, context);
-
-            case 'move':
-              if (!args.id) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for move operation',
-                );
-              }
-              return await moveProject(args as MoveProjectArgs, context);
-
-            default:
-              throw new MCPError(
-                ErrorCode.VALIDATION_ERROR,
-                `Unknown hierarchy subcommand: ${String(args.subcommand)}`,
-              );
-          }
-        })();
-
-        return result;
-      } catch (error) {
-        throw wrapToolError(error, 'vikunja_projects_hierarchy', args.subcommand, args.id);
-      }
-    },
-  );
-
-  // Link Sharing Operations
-  server.tool(
-    'vikunja_projects_sharing',
-    'Project sharing operations (create_share, list_shares, get_share, delete_share, auth_share)',
-    {
-      subcommand: z.enum([
-        'create_share',
-        'list_shares',
-        'get_share',
-        'delete_share',
-        'auth_share',
-      ]),
-      projectId: z.number().optional(),
-      shareId: z.string().optional(),
-      shareHash: z.string().optional(),
-      right: z.enum(['read', 'write', 'admin']).optional(),
-      name: z.string().optional(),
-      password: z.string().optional(),
-      shares: z.number().min(1).optional(),
-      page: z.number().min(1).optional(),
-      perPage: z.number().min(1).max(100).optional(),
-      verbosity: z.enum(['minimal', 'standard', 'detailed']).optional(),
-      useOptimizedFormat: z.boolean().optional(),
-      useAorp: z.boolean().optional(),
-    },
-    async (args, _context) => {
-      try {
-        const result = await (async (): Promise<McpResponse> => {
-          switch (args.subcommand) {
-            case 'create_share':
-              if (!args.projectId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for create_share operation',
-                );
-              }
-              if (!args.right) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Share right is required for create_share operation',
-                );
-              }
-              return await createProjectShare(args as CreateShareArgs);
-
-            case 'list_shares':
-              if (!args.projectId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Project ID is required for list_shares operation',
-                );
-              }
-              return await listProjectShares(args as ListSharesArgs);
-
-            case 'get_share':
-              if (!args.shareId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Share ID is required for get_share operation',
-                );
-              }
-              return await getProjectShare(args as GetShareArgs);
-
-            case 'delete_share':
-              if (!args.shareId) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Share ID is required for delete_share operation',
-                );
-              }
-              return await deleteProjectShare(args as DeleteShareArgs);
-
-            case 'auth_share': {
-              if (!args.shareHash) {
-                throw new MCPError(
-                  ErrorCode.VALIDATION_ERROR,
-                  'Share hash is required for auth_share operation',
-                );
-              }
-              const authShareArgs: AuthShareArgs = {
-                shareHash: args.shareHash,
-              };
-              if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
-              if (args.password !== undefined) authShareArgs.password = args.password;
-              return await authProjectShare(authShareArgs);
-            }
-
-            default:
-              throw new MCPError(
-                ErrorCode.VALIDATION_ERROR,
-                `Unknown sharing subcommand: ${String(args.subcommand)}`,
-              );
-          }
-        })();
-
-        return result;
-      } catch (error) {
-        throw wrapToolError(
-          error,
-          'vikunja_projects_sharing',
-          args.subcommand,
-          args.projectId || args.shareId,
-        );
       }
     },
   );
@@ -575,6 +401,11 @@ export type {
   GetShareArgs,
   DeleteShareArgs,
   AuthShareArgs,
+  ShareTeamArgs,
+  ListTeamSharesArgs,
+  GetTeamShareArgs,
+  UpdateTeamShareArgs,
+  RemoveTeamShareArgs,
 };
 
 // Export all functions for direct use if needed
@@ -600,4 +431,11 @@ export {
   getProjectShare,
   deleteProjectShare,
   authProjectShare,
+
+  // Team Sharing
+  shareTeam,
+  listTeamShares,
+  getTeamShare,
+  updateTeamShare,
+  removeTeamShare,
 };

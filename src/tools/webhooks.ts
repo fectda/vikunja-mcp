@@ -128,10 +128,14 @@ async function validateWebhookEvents(authManager: AuthManager, events: string[])
   }
 }
 
-export function registerWebhooksTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerWebhooksTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   server.tool(
     'vikunja_webhooks',
-    'Manage webhooks for integrating Vikunja events with external services',
+    'Manage webhooks for Vikunja event integration: list, get, create, update, delete webhooks, and list available event types. Use when the user wants to receive notifications or trigger external services on Vikunja events. Returns webhook data with target URL, events, and secret.',
     {
       // Operation type
       subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'list-events']),
@@ -203,9 +207,9 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
               {
                 success: true,
                 metadata: {
-                  count: webhooks.length
-                }
-              }
+                  count: webhooks.length,
+                },
+              },
             );
 
             return {
@@ -265,9 +269,9 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
               {
                 success: true,
                 metadata: {
-                  count: 1
-                }
-              }
+                  count: 1,
+                },
+              },
             );
 
             return {
@@ -344,9 +348,9 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
               {
                 success: true,
                 metadata: {
-                  count: 1
-                }
-              }
+                  count: 1,
+                },
+              },
             );
 
             return {
@@ -414,9 +418,9 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
                 success: true,
                 metadata: {
                   count: 1,
-                  affectedFields: ['events']
-                }
-              }
+                  affectedFields: ['events'],
+                },
+              },
             );
 
             return {
@@ -465,9 +469,9 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
               {
                 success: true,
                 metadata: {
-                  count: 1
-                }
-              }
+                  count: 1,
+                },
+              },
             );
 
             return {
@@ -493,9 +497,9 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
               {
                 success: true,
                 metadata: {
-                  count: events.length
-                }
-              }
+                  count: events.length,
+                },
+              },
             );
 
             return {

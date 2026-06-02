@@ -17,10 +17,14 @@ import { formatAorpAsMarkdown } from '../utils/response-factory';
 
 // Use shared validateAndConvertId from utils/validation
 
-export function registerLabelsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerLabelsTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   server.tool(
     'vikunja_labels',
-    'Manage task labels with full CRUD operations for organizing and categorizing tasks',
+    'Manage global labels: list, get, create, update, delete. Use when the user wants to organize tasks with labels. Labels created here can be applied to any task via vikunja_tasks with subcommand apply-label. Returns label data with id, title, hexColor, and description.',
     {
       // Operation type
       subcommand: z.enum(['list', 'get', 'create', 'update', 'delete']),
@@ -49,12 +53,11 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
         );
       }
 
-      const client = await getClientFromContext() as TypedVikunjaClient;
+      const client = (await getClientFromContext()) as TypedVikunjaClient;
 
       const subcommand = args.subcommand;
 
       try {
-
         switch (subcommand) {
           case 'list': {
             const params: Record<string, string | number> = {};
@@ -124,7 +127,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               'create-label',
               `Label "${label.title}" created successfully`,
               { label },
-              { affectedFields: Object.keys(labelData).filter(key => typeof key === 'string') },
+              { affectedFields: Object.keys(labelData).filter((key) => typeof key === 'string') },
             );
 
             return {
@@ -161,7 +164,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               'update-label',
               `Label "${label.title}" updated successfully`,
               { label },
-              { affectedFields: Object.keys(updates).filter(key => typeof key === 'string') },
+              { affectedFields: Object.keys(updates).filter((key) => typeof key === 'string') },
             );
 
             return {

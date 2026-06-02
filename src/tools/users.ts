@@ -46,14 +46,23 @@ function transformUser(rawUser: unknown): User {
         return '[object Object]';
       }
     }
-    return value !== null && value !== undefined && typeof value !== 'object' && typeof value !== 'boolean' ?
-      (typeof value === 'string' || typeof value === 'number' ? value.toString() : '') : '';
+    return value !== null &&
+      value !== undefined &&
+      typeof value !== 'object' &&
+      typeof value !== 'boolean'
+      ? typeof value === 'string' || typeof value === 'number'
+        ? value.toString()
+        : ''
+      : '';
   };
 
   const result = {
     id: Number(user.id) || 0,
     username: safeString(user.username),
-    frontend_settings: (user.frontend_settings && typeof user.frontend_settings === 'object') ? user.frontend_settings : {},
+    frontend_settings:
+      user.frontend_settings && typeof user.frontend_settings === 'object'
+        ? user.frontend_settings
+        : {},
   };
 
   const userResult: User = {
@@ -67,17 +76,25 @@ function transformUser(rawUser: unknown): User {
     ...(user.language ? { language: safeString(user.language) } : {}),
     ...(user.timezone ? { timezone: safeString(user.timezone) } : {}),
     ...(user.week_start !== undefined ? { week_start: Number(user.week_start) } : {}),
-    ...(user.email_reminders_enabled !== undefined ? { email_reminders_enabled: Boolean(user.email_reminders_enabled) } : {}),
-    ...(user.overdue_tasks_reminders_enabled !== undefined ? { overdue_tasks_reminders_enabled: Boolean(user.overdue_tasks_reminders_enabled) } : {}),
+    ...(user.email_reminders_enabled !== undefined
+      ? { email_reminders_enabled: Boolean(user.email_reminders_enabled) }
+      : {}),
+    ...(user.overdue_tasks_reminders_enabled !== undefined
+      ? { overdue_tasks_reminders_enabled: Boolean(user.overdue_tasks_reminders_enabled) }
+      : {}),
   };
 
   return userResult;
 }
 
-export function registerUsersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerUsersTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   server.tool(
     'vikunja_users',
-    'Manage user profiles, search users, and update user settings',
+    'Manage user profiles: get current user, search users, view and update settings and notification preferences. Use when the user asks about their profile, wants to find other users, or change settings like language, timezone, or email reminders. Requires JWT authentication. Returns user data with profile and settings.',
     {
       // Operation type
       subcommand: z.enum(['current', 'search', 'settings', 'update-settings']),
@@ -191,9 +208,15 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
               ...(user.timezone && { timezone: user.timezone }),
               ...(user.week_start !== undefined && { weekStart: user.week_start }),
               frontendSettings: user.frontend_settings || {},
-              ...(user.email_reminders_enabled !== undefined && { emailRemindersEnabled: user.email_reminders_enabled }),
-              ...(user.overdue_tasks_reminders_enabled !== undefined && { overdueTasksRemindersEnabled: user.overdue_tasks_reminders_enabled }),
-              ...(user.overdue_tasks_reminders_time && { overdueTasksRemindersTime: user.overdue_tasks_reminders_time }),
+              ...(user.email_reminders_enabled !== undefined && {
+                emailRemindersEnabled: user.email_reminders_enabled,
+              }),
+              ...(user.overdue_tasks_reminders_enabled !== undefined && {
+                overdueTasksRemindersEnabled: user.overdue_tasks_reminders_enabled,
+              }),
+              ...(user.overdue_tasks_reminders_time && {
+                overdueTasksRemindersTime: user.overdue_tasks_reminders_time,
+              }),
             };
 
             const response = createStandardResponse(

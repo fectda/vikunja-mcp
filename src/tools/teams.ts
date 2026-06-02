@@ -30,7 +30,7 @@ export function registerTeamsTool(
 ): void {
   server.tool(
     'vikunja_teams',
-    'Manage teams and team memberships for collaborative project management',
+    'Manage teams and team memberships: create, list, get, update, delete teams, and manage members (add, remove, list, update admin status). Use when the user wants to organize users into teams for project sharing. Returns team data with member list and permissions.',
     {
       // List all teams
       subcommand: z.enum(['list', 'create', 'get', 'update', 'delete', 'members']),

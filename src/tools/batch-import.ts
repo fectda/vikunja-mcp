@@ -8,7 +8,10 @@ import { MCPError, ErrorCode } from '../types';
 import { parseInputData } from '../parsers/InputParserFactory';
 import { EntityResolver } from '../services/EntityResolver';
 import { TaskCreationService } from '../services/TaskCreationService';
-import { BatchImportResponseFormatter, type ImportResult } from '../formatters/BatchImportResponseFormatter';
+import {
+  BatchImportResponseFormatter,
+  type ImportResult,
+} from '../formatters/BatchImportResponseFormatter';
 
 const MAX_BATCH_SIZE = 100;
 
@@ -17,10 +20,14 @@ const MAX_BATCH_SIZE = 100;
  * Main tool registration and orchestration layer for batch task import
  * =================================================================== */
 
-export function registerBatchImportTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerBatchImportTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   server.tool(
     'vikunja_batch_import',
-    'Import tasks in bulk from CSV or JSON formats with error handling and dry-run support',
+    'Import tasks in bulk from CSV or JSON format. Use when the user wants to import multiple tasks at once from a file or formatted data. Supports dry-run for preview. Returns import summary with counts of created, skipped, and failed tasks.',
     {
       projectId: z.number(),
       format: z.enum(['csv', 'json']),
@@ -72,10 +79,12 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
         // Handle dry run
         if (args.dryRun) {
           return {
-            content: [{
-              type: 'text',
-              text: `Validation successful. ${tasks.length} tasks ready to import.`,
-            }],
+            content: [
+              {
+                type: 'text',
+                text: `Validation successful. ${tasks.length} tasks ready to import.`,
+              },
+            ],
           };
         }
 
@@ -105,7 +114,7 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
               args.projectId,
               client,
               entityResult,
-              args.skipErrors === true
+              args.skipErrors === true,
             );
 
             if (creationResult.success) {
@@ -151,13 +160,19 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
 
         // Format and return response
         const hasAssignees = tasks.some((t) => t.assignees && t.assignees.length > 0);
-        const responseText = responseFormatter.formatResult(result, userFetchFailedDueToAuth, hasAssignees);
+        const responseText = responseFormatter.formatResult(
+          result,
+          userFetchFailedDueToAuth,
+          hasAssignees,
+        );
 
         return {
-          content: [{
-            type: 'text',
-            text: responseText,
-          }],
+          content: [
+            {
+              type: 'text',
+              text: responseText,
+            },
+          ],
         };
       } catch (error) {
         if (error instanceof MCPError) {
@@ -172,10 +187,12 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
         });
 
         return {
-          content: [{
-            type: 'text',
-            text: `Failed to import tasks: ${error instanceof Error ? error.message : String(error)}`,
-          }],
+          content: [
+            {
+              type: 'text',
+              text: `Failed to import tasks: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
         };
       }
     },

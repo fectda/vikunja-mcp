@@ -17,9 +17,13 @@ import { formatAorpAsMarkdown } from '../utils/response-factory';
 /**
  * Get session-scoped storage instance
  */
-async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+async function getSessionStorage(
+  authManager: AuthManager,
+): ReturnType<typeof storageManager.getStorage> {
   const session = authManager.getSession();
-  const sessionId = session.apiToken ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}` : 'anonymous';
+  const sessionId = session.apiToken
+    ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}`
+    : 'anonymous';
   return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
 }
 
@@ -46,10 +50,14 @@ interface TemplateData {
   variables?: Record<string, string>;
 }
 
-export function registerTemplatesTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerTemplatesTool(
+  server: McpServer,
+  authManager: AuthManager,
+  _clientFactory?: VikunjaClientFactory,
+): void {
   server.tool(
     'vikunja_templates',
-    'Manage task templates for creating consistent tasks and project structures',
+    'Manage task templates: create, list, get, update, delete, instantiate. Use when the user wants to create reusable task templates from existing projects, or instantiate a template into a new project. Returns template data with tasks, labels, and project structure.',
     {
       subcommand: z.enum(['create', 'list', 'get', 'update', 'delete', 'instantiate']),
       // Template fields
