@@ -379,7 +379,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Mock deleteTask to fail with non-Error object
       mockClient.tasks.deleteTask.mockRejectedValue({ status: 500, message: 'Server error' });
 
-      await expect(deleteTask({ id: 1 })).rejects.toThrow('Failed to delete task: Unknown error');
+      await expect(deleteTask({ id: 1 })).rejects.toThrow('Failed to delete task: Server error');
     });
 
     it('should handle string errors during deletion', async () => {
@@ -402,7 +402,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Mock getTask to fail with non-Error object
       mockClient.tasks.getTask.mockRejectedValue({ code: 404, message: 'Not found' });
 
-      await expect(getTask({ id: 1 })).rejects.toThrow('Failed to get task: Unknown error');
+      await expect(getTask({ id: 1 })).rejects.toThrow('Failed to get task: Not found');
     });
 
     it('should handle string errors in getTask', async () => {

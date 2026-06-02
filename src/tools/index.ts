@@ -17,13 +17,6 @@ import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 
 import { registerAuthTool } from './auth';
 import { registerTasksTool } from './tasks';
-import { registerTaskCrudTool } from './task-crud';
-import { registerTaskBulkTool } from './task-bulk';
-import { registerTaskAssigneesTool } from './task-assignees';
-import { registerTaskCommentsTool } from './task-comments';
-import { registerTaskRemindersTool } from './task-reminders';
-import { registerTaskLabelsTool } from './task-labels';
-import { registerTaskRelationsTool } from './task-relations';
 import { registerProjectsTool } from './projects/index';
 import { registerLabelsTool } from './labels';
 import { registerTeamsTool } from './teams';
@@ -39,13 +32,6 @@ import { registerProjectTeamSharingTool } from './projects/team-sharing';
 export {
   registerAuthTool,
   registerTasksTool,
-  registerTaskCrudTool,
-  registerTaskBulkTool,
-  registerTaskAssigneesTool,
-  registerTaskCommentsTool,
-  registerTaskRemindersTool,
-  registerTaskLabelsTool,
-  registerTaskRelationsTool,
   registerProjectsTool,
   registerLabelsTool,
   registerTeamsTool,
@@ -69,15 +55,6 @@ export function registerTools(
 
   // Register the comprehensive tasks tool (expected by tests)
   registerTasksTool(server, authManager, clientFactory);
-
-  // Register individual task tools for more granular operations
-  registerTaskCrudTool(server, authManager, clientFactory);
-  registerTaskBulkTool(server, authManager, clientFactory);
-  registerTaskAssigneesTool(server, authManager, clientFactory);
-  registerTaskCommentsTool(server, authManager, clientFactory);
-  registerTaskRemindersTool(server, authManager, clientFactory);
-  registerTaskLabelsTool(server, authManager, clientFactory);
-  registerTaskRelationsTool(server, authManager, clientFactory);
 
   // Only register tools that require clientFactory if it's available
   if (clientFactory) {

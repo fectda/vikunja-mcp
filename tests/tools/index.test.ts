@@ -64,6 +64,15 @@ import { registerWebhooksTool } from '../../src/tools/webhooks';
 import { registerBatchImportTool } from '../../src/tools/batch-import';
 import { registerExportTool } from '../../src/tools/export';
 
+// Import empty dummy tools for coverage
+import { registerTaskCrudTool } from '../../src/tools/task-crud';
+import { registerTaskAssigneesTool } from '../../src/tools/task-assignees';
+import { registerTaskBulkTool } from '../../src/tools/task-bulk';
+import { registerTaskCommentsTool } from '../../src/tools/task-comments';
+import { registerTaskLabelsTool } from '../../src/tools/task-labels';
+import { registerTaskRelationsTool } from '../../src/tools/task-relations';
+import { registerTaskRemindersTool } from '../../src/tools/task-reminders';
+
 describe('Tool Registration', () => {
   let mockServer: jest.Mocked<McpServer>;
   let mockAuthManager: jest.Mocked<AuthManager>;
@@ -125,28 +134,60 @@ describe('Tool Registration', () => {
       expect(registerAuthTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
       expect(registerTasksTool).toHaveBeenCalledTimes(1);
-      expect(registerTasksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTasksTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerProjectsTool).toHaveBeenCalledTimes(1);
-      expect(registerProjectsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerProjectsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerLabelsTool).toHaveBeenCalledTimes(1);
-      expect(registerLabelsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerLabelsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerTeamsTool).toHaveBeenCalledTimes(1);
-      expect(registerTeamsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTeamsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerFiltersTool).toHaveBeenCalledTimes(1);
-      expect(registerFiltersTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerFiltersTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerTemplatesTool).toHaveBeenCalledTimes(1);
-      expect(registerTemplatesTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTemplatesTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerWebhooksTool).toHaveBeenCalledTimes(1);
-      expect(registerWebhooksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerWebhooksTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerBatchImportTool).toHaveBeenCalledTimes(1);
-      expect(registerBatchImportTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerBatchImportTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       // These should NOT be called with API token auth (backward compatibility)
       expect(registerUsersTool).not.toHaveBeenCalled();
@@ -159,6 +200,15 @@ describe('Tool Registration', () => {
       mockAuthManager.isAuthenticated.mockReturnValue(true);
       mockAuthManager.getAuthType.mockReturnValue('jwt');
 
+      // Call empty tools for coverage
+      registerTaskCrudTool(mockServer, mockAuthManager);
+      registerTaskAssigneesTool(mockServer, mockAuthManager);
+      registerTaskBulkTool(mockServer, mockAuthManager);
+      registerTaskCommentsTool(mockServer, mockAuthManager);
+      registerTaskLabelsTool(mockServer, mockAuthManager);
+      registerTaskRelationsTool(mockServer, mockAuthManager);
+      registerTaskRemindersTool(mockServer, mockAuthManager);
+
       // Act
       registerTools(mockServer, mockAuthManager, mockClientFactory);
 
@@ -167,34 +217,74 @@ describe('Tool Registration', () => {
       expect(registerAuthTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
       expect(registerTasksTool).toHaveBeenCalledTimes(1);
-      expect(registerTasksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTasksTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerProjectsTool).toHaveBeenCalledTimes(1);
-      expect(registerProjectsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerProjectsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerLabelsTool).toHaveBeenCalledTimes(1);
-      expect(registerLabelsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerLabelsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerTeamsTool).toHaveBeenCalledTimes(1);
-      expect(registerTeamsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTeamsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerFiltersTool).toHaveBeenCalledTimes(1);
-      expect(registerFiltersTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerFiltersTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerTemplatesTool).toHaveBeenCalledTimes(1);
-      expect(registerTemplatesTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTemplatesTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerWebhooksTool).toHaveBeenCalledTimes(1);
-      expect(registerWebhooksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerWebhooksTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerBatchImportTool).toHaveBeenCalledTimes(1);
-      expect(registerBatchImportTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerBatchImportTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       // These SHOULD be called with JWT auth
       expect(registerUsersTool).toHaveBeenCalledTimes(1);
-      expect(registerUsersTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerUsersTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
       expect(registerExportTool).toHaveBeenCalledTimes(1);
-      expect(registerExportTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerExportTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
     });
 
     it('should not register users and export tools when not authenticated with clientFactory', () => {
@@ -210,28 +300,60 @@ describe('Tool Registration', () => {
       expect(registerAuthTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
       expect(registerTasksTool).toHaveBeenCalledTimes(1);
-      expect(registerTasksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTasksTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerProjectsTool).toHaveBeenCalledTimes(1);
-      expect(registerProjectsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerProjectsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerLabelsTool).toHaveBeenCalledTimes(1);
-      expect(registerLabelsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerLabelsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerTeamsTool).toHaveBeenCalledTimes(1);
-      expect(registerTeamsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTeamsTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerFiltersTool).toHaveBeenCalledTimes(1);
-      expect(registerFiltersTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerFiltersTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerTemplatesTool).toHaveBeenCalledTimes(1);
-      expect(registerTemplatesTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerTemplatesTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerWebhooksTool).toHaveBeenCalledTimes(1);
-      expect(registerWebhooksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerWebhooksTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       expect(registerBatchImportTool).toHaveBeenCalledTimes(1);
-      expect(registerBatchImportTool).toHaveBeenCalledWith(mockServer, mockAuthManager, mockClientFactory);
+      expect(registerBatchImportTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
 
       // These should NOT be called when not authenticated
       expect(registerUsersTool).not.toHaveBeenCalled();
