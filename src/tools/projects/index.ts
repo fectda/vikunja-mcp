@@ -106,6 +106,7 @@ export function registerProjectsTool(
       id: z.number().positive().optional(),
       title: z.string().optional(),
       description: z.string().optional(),
+      identifier: z.string().min(1).max(50).optional(),
       parentProjectId: z.number().positive().optional(),
       isArchived: z.boolean().optional(),
       hexColor: z

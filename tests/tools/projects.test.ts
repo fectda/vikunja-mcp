@@ -454,6 +454,25 @@ describe('Projects Tool', () => {
       expect(markdown).toMatch(/update[_\\]+project/);
     });
 
+    it('should update a project with identifier', async () => {
+      const updatedProject = { ...mockProject, title: 'Updated Title', identifier: 'NEWID' };
+      mockClient.projects.getProject.mockResolvedValue(mockProject);
+      mockClient.projects.updateProject.mockResolvedValue(updatedProject);
+
+      const result = await callTool('update', {
+        id: 1,
+        identifier: 'NEWID',
+      });
+
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
+        identifier: 'NEWID',
+        title: 'Test Project',
+      });
+      expect(result.content[0].type).toBe('text');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Project "Updated Title" updated successfully');
+    });
+
     it('should update a root project (parent_project_id: 0) without validation error', async () => {
       // This test reproduces the bug: updating a root project (parent_project_id: 0)
       // should not fail with "parentProjectId must be a positive integer"
