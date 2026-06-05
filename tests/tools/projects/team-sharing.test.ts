@@ -119,6 +119,46 @@ describe('Team Sharing Tool', () => {
     it('should require teamId', async () => {
       await expect(callTool('get-team-share', { projectId: 1 })).rejects.toThrow('Team ID');
     });
+
+    it('should get a team share by listing and filtering', async () => {
+      const mockTeamShares = [
+        { team: { id: 1, name: 'Team Alpha' }, right: 2 },
+        { team: { id: 5, name: 'Team Bravo' }, right: 1 },
+        { team: { id: 3, name: 'Team Charlie' }, right: 0 },
+      ];
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue(mockTeamShares),
+      });
+
+      const result = await callTool('get-team-share', { projectId: 1, teamId: 5 });
+
+      // Should have called the LIST endpoint, not a singular GET
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://vikunja.example.com/api/v1/projects/1/teams',
+        expect.objectContaining({ method: 'GET' }),
+      );
+
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Retrieved team share');
+      expect(markdown).toContain('Team Bravo');
+    });
+
+    it('should throw NOT_FOUND when team is not in the list', async () => {
+      const mockTeamShares = [{ team: { id: 1, name: 'Team Alpha' }, right: 0 }];
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue(mockTeamShares),
+      });
+
+      await expect(callTool('get-team-share', { projectId: 1, teamId: 99 })).rejects.toThrow(
+        'Team share not found for team 99 on project 1',
+      );
+    });
   });
 
   describe('update-team-share subcommand', () => {
@@ -597,10 +637,12 @@ describe('Team Sharing Tool', () => {
     it('should get a team share successfully', async () => {
       const mockShare = { team: { id: 5, name: 'Team Five' }, right: 1 };
 
+      const mockTeamShares = [{ team: { id: 5, name: 'Test Team' }, right: 1 }];
+
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue(mockShare),
+        json: jest.fn().mockResolvedValue(mockTeamShares),
       });
 
       const result = await callTool('get-team-share', { projectId: 1, teamId: 5 });
@@ -608,13 +650,14 @@ describe('Team Sharing Tool', () => {
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
       expect(typeof result.content[0].text).toBe('string');
+      // Now calls the LIST endpoint, not the singular GET
       expect(global.fetch).toHaveBeenCalledWith(
-        'https://vikunja.example.com/api/v1/projects/1/teams/5',
+        'https://vikunja.example.com/api/v1/projects/1/teams',
         expect.objectContaining({ method: 'GET' }),
       );
     });
 
-    it('should handle 404', async () => {
+    it('should handle 404 from list endpoint', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: false,
         status: 404,
@@ -622,11 +665,11 @@ describe('Team Sharing Tool', () => {
       });
 
       await expect(callTool('get-team-share', { projectId: 1, teamId: 99 })).rejects.toThrow(
-        'Team share not found for team 99 on project 1',
+        'Project with ID 1 not found',
       );
     });
 
-    it('should handle generic API error', async () => {
+    it('should handle generic API error from list endpoint', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: false,
         status: 500,
@@ -634,7 +677,7 @@ describe('Team Sharing Tool', () => {
       });
 
       await expect(callTool('get-team-share', { projectId: 1, teamId: 5 })).rejects.toThrow(
-        'Failed to get team share',
+        'Failed to list team shares: Server error',
       );
     });
   });
