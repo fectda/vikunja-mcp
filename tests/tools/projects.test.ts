@@ -1062,7 +1062,7 @@ describe('Projects Tool', () => {
     };
 
     it('should get a specific share', async () => {
-      mockClient.projects.getLinkShare.mockResolvedValue(mockShare);
+      mockClient.projects.getLinkShares.mockResolvedValue([mockShare]);
 
       const result = await callTool('get-share', { projectId: 1, shareId: '1' });
       const markdown = result.content[0].text;
@@ -1072,7 +1072,7 @@ describe('Projects Tool', () => {
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Retrieved link share:');
       expect(markdown).toMatch(/get[_\\]+project[_\\]+share/);
-      expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, 1);
+      expect(mockClient.projects.getLinkShares).toHaveBeenCalledWith(1, {});
     });
 
     it('should require project ID', async () => {
@@ -1091,8 +1091,8 @@ describe('Projects Tool', () => {
       );
     });
 
-    it('should handle 404 errors', async () => {
-      mockClient.projects.getLinkShare.mockRejectedValue({ statusCode: 404 });
+    it('should handle share not found', async () => {
+      mockClient.projects.getLinkShares.mockResolvedValue([]);
 
       await expect(callTool('get-share', { projectId: 1, shareId: '999' })).rejects.toThrow(
         'Share with ID 999 not found for project 1',
@@ -1100,7 +1100,7 @@ describe('Projects Tool', () => {
     });
 
     it('should handle API errors', async () => {
-      mockClient.projects.getLinkShare.mockRejectedValue(new Error('Network error'));
+      mockClient.projects.getLinkShares.mockRejectedValue(new Error('Network error'));
 
       await expect(callTool('get-share', { projectId: 1, shareId: '1' })).rejects.toThrow(
         'Failed to get share: Network error',
@@ -1108,7 +1108,7 @@ describe('Projects Tool', () => {
     });
 
     it('should handle non-Error API errors', async () => {
-      mockClient.projects.getLinkShare.mockRejectedValue(123);
+      mockClient.projects.getLinkShares.mockRejectedValue(123);
 
       await expect(callTool('get-share', { projectId: 1, shareId: '1' })).rejects.toThrow(
         'Failed to get share: 123',
@@ -1117,21 +1117,7 @@ describe('Projects Tool', () => {
   });
 
   describe('delete-share', () => {
-    const mockShare: LinkSharing = {
-      id: 1,
-      project_id: 1,
-      hash: 'abc123',
-      right: 0,
-      label: 'Test Share',
-      password_enabled: false,
-      expires: null,
-      sharing_url: 'https://vikunja.example.com/share/abc123',
-      created: new Date().toISOString(),
-      updated: new Date().toISOString(),
-    };
-
     it('should delete a share', async () => {
-      mockClient.projects.getLinkShare.mockResolvedValue(mockShare);
       mockClient.projects.deleteLinkShare.mockResolvedValue({});
 
       const result = await callTool('delete-share', { projectId: 1, shareId: '1' });
@@ -1142,7 +1128,6 @@ describe('Projects Tool', () => {
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Share with ID 1 deleted successfully');
       expect(markdown).toMatch(/delete[_\\]+project[_\\]+share/);
-      expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, 1);
       expect(mockClient.projects.deleteLinkShare).toHaveBeenCalledWith(1, 1);
     });
 

@@ -272,6 +272,9 @@ export async function listTeamShares(
 
 /**
  * Get a specific team share
+ *
+ * Vikunja API does not expose GET /projects/{id}/teams/{teamId}.
+ * We list all team shares and filter client-side by team_id.
  */
 export async function getTeamShare(
   args: GetTeamShareArgs,
@@ -290,7 +293,8 @@ export async function getTeamShare(
     await getClientFromContext();
     const session = authManager.getSession();
 
-    const response = await fetch(`${session.apiUrl}/projects/${projectId}/teams/${teamId}`, {
+    // Vikunja only supports listing all team shares — filter client-side
+    const listResponse = await fetch(`${session.apiUrl}/projects/${projectId}/teams`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${session.apiToken}`,
@@ -298,26 +302,31 @@ export async function getTeamShare(
       },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (!listResponse.ok) {
+      const errorText = await listResponse.text();
 
-      if (response.status === 404) {
-        throw new MCPError(
-          ErrorCode.NOT_FOUND,
-          `Team share not found for team ${teamId} on project ${projectId}`,
-        );
+      if (listResponse.status === 404) {
+        throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${projectId} not found`);
       }
 
-      throw new MCPError(ErrorCode.API_ERROR, `Failed to get team share: ${errorText}`, {
-        statusCode: response.status,
-        endpoint: `/projects/${projectId}/teams/${teamId}`,
+      throw new MCPError(ErrorCode.API_ERROR, `Failed to list team shares: ${errorText}`, {
+        statusCode: listResponse.status,
+        endpoint: `/projects/${projectId}/teams`,
       });
     }
 
-    const teamShare = (await response.json()) as {
+    const teamShares = (await listResponse.json()) as Array<{
       team: { id: number; name: string };
       right: number;
-    };
+    }>;
+    const teamShare = teamShares.find((ts) => ts.team.id === teamId);
+
+    if (!teamShare) {
+      throw new MCPError(
+        ErrorCode.NOT_FOUND,
+        `Team share not found for team ${teamId} on project ${projectId}`,
+      );
+    }
 
     const standardResponse = createStandardResponse(
       'get-team-share',
@@ -486,4 +495,3 @@ export async function removeTeamShare(
     throw wrapToolError(error, 'vikunja_projects_team_sharing', 'remove-team-share', projectId);
   }
 }
-
