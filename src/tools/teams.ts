@@ -48,6 +48,7 @@ export function registerTeamsTool(
       // Member operations
       memberSubcommand: z.enum(['list', 'add', 'remove', 'update']).optional(),
       userId: z.union([z.string(), z.number()]).optional(),
+      username: z.string().optional(),
       admin: z.boolean().optional(),
     },
     async (args) => {
@@ -341,16 +342,13 @@ export function registerTeamsTool(
               }
 
               case 'add': {
-                if (args.userId === undefined) {
-                  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+                if (!args.username) {
+                  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Username is required');
                 }
 
-                const userId = validateAndConvertId(args.userId, 'userId');
-
                 // Make direct API call to add member to team
-                // API accepts either user_id (integer) or username (string)
-                const memberData: { user_id: number; admin?: boolean } = {
-                  user_id: userId,
+                const memberData: { username: string; admin?: boolean } = {
+                  username: args.username,
                 };
                 if (args.admin !== undefined) memberData.admin = args.admin;
 
@@ -369,7 +367,7 @@ export function registerTeamsTool(
                     { statusCode: response.status, message: errorText },
                     'add team member',
                     teamId,
-                    `Failed to add user ${userId} to team ${teamId}: ${errorText}`,
+                    `Failed to add user "${args.username}" to team ${teamId}: ${errorText}`,
                   );
                 }
 
@@ -377,9 +375,9 @@ export function registerTeamsTool(
 
                 const standardResponse = createStandardResponse(
                   'add-team-member',
-                  `User ${userId} added to team successfully`,
+                  `User "${args.username}" added to team successfully`,
                   { member },
-                  { teamId, userId, admin: args.admin },
+                  { teamId, username: args.username, admin: args.admin },
                 );
 
                 return {

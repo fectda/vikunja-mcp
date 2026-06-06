@@ -583,44 +583,20 @@ describe('Teams Tool', () => {
     });
 
     describe('members add subcommand', () => {
-      it('should require user ID', async () => {
+      it('should require username', async () => {
         await expect(callTool('members', { id: 1, memberSubcommand: 'add' })).rejects.toThrow(
-          'User ID is required',
+          'Username is required',
         );
       });
 
-      it('should validate user ID', async () => {
+      it('should validate username is not empty', async () => {
         await expect(
-          callTool('members', { id: 1, memberSubcommand: 'add', userId: 'invalid' }),
-        ).rejects.toThrow('userId must be a positive integer');
+          callTool('members', { id: 1, memberSubcommand: 'add', username: '' }),
+        ).rejects.toThrow();
       });
 
       it('should add a member to team', async () => {
-        const newMember = { ...mockMembers[0], id: 3 };
-        global.fetch = jest.fn().mockResolvedValue({
-          ok: true,
-          json: jest.fn().mockResolvedValue(newMember),
-        } as any);
-
-        const result = await callTool('members', { id: 1, memberSubcommand: 'add', userId: 3 });
-
-        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1/members', {
-          method: 'PUT',
-          headers: {
-            Authorization: 'Bearer test-token',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ user_id: 3 }),
-        });
-
-        const markdown = result.content[0].text;
-        expect(markdown).toContain('## ✅ Success');
-        expect(markdown).toContain('**Operation:** add-team-member');
-        expect(markdown).toContain('User 3 added to team successfully');
-      });
-
-      it('should add a member as admin', async () => {
-        const newMember = { ...mockMembers[0], id: 3, admin: true };
+        const newMember = { ...mockMembers[0], id: 3, username: 'user3' };
         global.fetch = jest.fn().mockResolvedValue({
           ok: true,
           json: jest.fn().mockResolvedValue(newMember),
@@ -629,7 +605,35 @@ describe('Teams Tool', () => {
         const result = await callTool('members', {
           id: 1,
           memberSubcommand: 'add',
-          userId: 3,
+          username: 'user3',
+        });
+
+        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1/members', {
+          method: 'PUT',
+          headers: {
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username: 'user3' }),
+        });
+
+        const markdown = result.content[0].text;
+        expect(markdown).toContain('## ✅ Success');
+        expect(markdown).toContain('**Operation:** add-team-member');
+        expect(markdown).toContain('User "user3" added to team successfully');
+      });
+
+      it('should add a member as admin', async () => {
+        const newMember = { ...mockMembers[0], id: 3, username: 'user3', admin: true };
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: true,
+          json: jest.fn().mockResolvedValue(newMember),
+        } as any);
+
+        const result = await callTool('members', {
+          id: 1,
+          memberSubcommand: 'add',
+          username: 'user3',
           admin: true,
         });
 
@@ -639,11 +643,11 @@ describe('Teams Tool', () => {
             Authorization: 'Bearer test-token',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ user_id: 3, admin: true }),
+          body: JSON.stringify({ username: 'user3', admin: true }),
         });
 
         const markdown = result.content[0].text;
-        expect(markdown).toContain('User 3 added to team successfully');
+        expect(markdown).toContain('User "user3" added to team successfully');
       });
 
       it('should handle API errors when adding member', async () => {
@@ -654,8 +658,8 @@ describe('Teams Tool', () => {
         } as any);
 
         await expect(
-          callTool('members', { id: 1, memberSubcommand: 'add', userId: 999 }),
-        ).rejects.toThrow('Failed to add user 999 to team 1');
+          callTool('members', { id: 1, memberSubcommand: 'add', username: 'unknown_user' }),
+        ).rejects.toThrow('Failed to add user "unknown_user" to team 1');
       });
     });
 
@@ -735,7 +739,7 @@ describe('Teams Tool', () => {
 
         // Test expects error to be thrown (any error is acceptable for this edge case)
         await expect(
-          callTool('members', { id: 1, memberSubcommand: 'add', userId: 1 }),
+          callTool('members', { id: 1, memberSubcommand: 'add', username: 'user1' }),
         ).rejects.toThrow();
       });
     });
