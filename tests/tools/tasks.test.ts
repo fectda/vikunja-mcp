@@ -2,15 +2,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../src/auth/AuthManager';
 import { createMockTestableAuthManager } from '../utils/test-utils';
-import {
-  registerTasksTool,
-  registerTaskBulkTool,
-  registerTaskAssigneesTool,
-  registerTaskCommentsTool,
-  registerTaskRemindersTool,
-  registerTaskLabelsTool,
-  registerTaskRelationsTool,
-} from '../../src/tools/index';
+import { registerTasksTool } from '../../src/tools/index';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { Task, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';

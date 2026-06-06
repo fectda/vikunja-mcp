@@ -64,15 +64,6 @@ import { registerWebhooksTool } from '../../src/tools/webhooks';
 import { registerBatchImportTool } from '../../src/tools/batch-import';
 import { registerExportTool } from '../../src/tools/export';
 
-// Import empty dummy tools for coverage
-import { registerTaskCrudTool } from '../../src/tools/task-crud';
-import { registerTaskAssigneesTool } from '../../src/tools/task-assignees';
-import { registerTaskBulkTool } from '../../src/tools/task-bulk';
-import { registerTaskCommentsTool } from '../../src/tools/task-comments';
-import { registerTaskLabelsTool } from '../../src/tools/task-labels';
-import { registerTaskRelationsTool } from '../../src/tools/task-relations';
-import { registerTaskRemindersTool } from '../../src/tools/task-reminders';
-
 describe('Tool Registration', () => {
   let mockServer: jest.Mocked<McpServer>;
   let mockAuthManager: jest.Mocked<AuthManager>;
@@ -199,15 +190,6 @@ describe('Tool Registration', () => {
       const mockClientFactory = { test: 'factory' };
       mockAuthManager.isAuthenticated.mockReturnValue(true);
       mockAuthManager.getAuthType.mockReturnValue('jwt');
-
-      // Call empty tools for coverage
-      registerTaskCrudTool(mockServer, mockAuthManager);
-      registerTaskAssigneesTool(mockServer, mockAuthManager);
-      registerTaskBulkTool(mockServer, mockAuthManager);
-      registerTaskCommentsTool(mockServer, mockAuthManager);
-      registerTaskLabelsTool(mockServer, mockAuthManager);
-      registerTaskRelationsTool(mockServer, mockAuthManager);
-      registerTaskRemindersTool(mockServer, mockAuthManager);
 
       // Act
       registerTools(mockServer, mockAuthManager, mockClientFactory);
