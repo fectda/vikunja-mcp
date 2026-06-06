@@ -140,18 +140,24 @@ class SecureErrorHandler {
     resourceId?: string | number,
     customMessage?: string,
   ): MCPError {
-    if (this.isStatusCodeError(error) && error.statusCode === 404) {
-      if (customMessage) {
-        return new MCPError(ErrorCode.NOT_FOUND, customMessage);
+    if (this.isStatusCodeError(error)) {
+      if (error.statusCode === 404) {
+        if (customMessage) {
+          return new MCPError(ErrorCode.NOT_FOUND, this.sanitize(customMessage));
+        }
+
+        const resourceInfo = resourceId ? ` with ID ${resourceId}` : '';
+        const resourceType = this.extractResourceType(operation);
+
+        return new MCPError(
+          ErrorCode.NOT_FOUND,
+          `${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}${resourceInfo} not found`,
+        );
       }
 
-      const resourceInfo = resourceId ? ` with ID ${resourceId}` : '';
-      const resourceType = this.extractResourceType(operation);
-
-      return new MCPError(
-        ErrorCode.NOT_FOUND,
-        `${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}${resourceInfo} not found`,
-      );
+      if (customMessage) {
+        return new MCPError(ErrorCode.API_ERROR, this.sanitize(customMessage));
+      }
     }
 
     // For status code errors, extract message from Error instances, strings, or plain objects

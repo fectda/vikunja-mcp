@@ -97,6 +97,27 @@ describe('Error Handler Utilities', () => {
       expect(result.code).toBe(ErrorCode.NOT_FOUND);
       expect(result.message).toBe(customMessage);
     });
+
+    it('should use and sanitize custom message for non-404 status codes', () => {
+      const error = { statusCode: 403 };
+      const customMessage = 'Permission denied for /Users/test/config.js';
+      const result = handleStatusCodeError(error, 'access resource', undefined, customMessage);
+
+      expect(result).toBeInstanceOf(MCPError);
+      expect(result.code).toBe(ErrorCode.API_ERROR);
+      // The custom message contains a file path, so it gets sanitized
+      expect(result.message).toBe('File system access error');
+    });
+
+    it('should use custom message for 500 errors', () => {
+      const error = { statusCode: 500 };
+      const customMessage = 'A custom server error occurred';
+      const result = handleStatusCodeError(error, 'do operation', undefined, customMessage);
+
+      expect(result).toBeInstanceOf(MCPError);
+      expect(result.code).toBe(ErrorCode.API_ERROR);
+      expect(result.message).toBe('A custom server error occurred');
+    });
   });
 
   describe('transformApiError', () => {
