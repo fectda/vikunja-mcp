@@ -581,6 +581,30 @@ describe('Teams Tool', () => {
         expect(markdown).toContain('Retrieved 1 member');
       });
 
+      it('should handle empty team', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            id: 2,
+            name: 'Empty Team',
+            // No members property
+          }),
+        } as any);
+
+        const result = await callTool('members', { id: 2, memberSubcommand: 'list' });
+
+        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/2', {
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const markdown = result.content[0].text;
+        expect(markdown).toContain('Retrieved 0 members');
+      });
+
       it('should handle API errors when listing members', async () => {
         global.fetch = jest.fn().mockResolvedValue({
           ok: false,
