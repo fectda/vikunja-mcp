@@ -303,8 +303,8 @@ export function registerTeamsTool(
 
             switch (memberSubcommand) {
               case 'list': {
-                // Make direct API call to list team members
-                const response = await fetch(`${session.apiUrl}/teams/${teamId}/members`, {
+                // Make direct API call to fetch team and extract its members
+                const response = await fetch(`${session.apiUrl}/teams/${teamId}`, {
                   method: 'GET',
                   headers: {
                     Authorization: `Bearer ${session.apiToken}`,
@@ -322,7 +322,8 @@ export function registerTeamsTool(
                   );
                 }
 
-                const members = await response.json();
+                const team = await response.json();
+                const members = team.members ?? [];
 
                 const standardResponse = createStandardResponse(
                   'list-team-members',
