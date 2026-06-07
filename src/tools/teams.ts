@@ -322,7 +322,7 @@ export function registerTeamsTool(
                   );
                 }
 
-                const team = await response.json();
+                const team = (await response.json()) as { members?: unknown[] };
                 const members = team.members ?? [];
 
                 const standardResponse = createStandardResponse(
