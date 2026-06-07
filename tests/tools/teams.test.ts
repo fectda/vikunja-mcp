@@ -518,12 +518,16 @@ describe('Teams Tool', () => {
       it('should list team members by default', async () => {
         global.fetch = jest.fn().mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockMembers),
+          json: jest.fn().mockResolvedValue({
+            id: 1,
+            name: 'Test Team',
+            members: mockMembers,
+          }),
         } as any);
 
         const result = await callTool('members', { id: 1 });
 
-        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1/members', {
+        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1', {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-token',
@@ -540,12 +544,16 @@ describe('Teams Tool', () => {
       it('should list team members explicitly', async () => {
         global.fetch = jest.fn().mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockMembers),
+          json: jest.fn().mockResolvedValue({
+            id: 1,
+            name: 'Test Team',
+            members: mockMembers,
+          }),
         } as any);
 
         const result = await callTool('members', { id: 1, memberSubcommand: 'list' });
 
-        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1/members', {
+        expect(global.fetch).toHaveBeenCalledWith('https://vikunja.example.com/teams/1', {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-token',
@@ -560,7 +568,11 @@ describe('Teams Tool', () => {
       it('should handle single member response', async () => {
         global.fetch = jest.fn().mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockMembers[0]),
+          json: jest.fn().mockResolvedValue({
+            id: 1,
+            name: 'Test Team',
+            members: [mockMembers[0]],
+          }),
         } as any);
 
         const result = await callTool('members', { id: 1, memberSubcommand: 'list' });
