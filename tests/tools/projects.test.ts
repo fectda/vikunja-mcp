@@ -352,6 +352,16 @@ describe('Projects Tool', () => {
       });
     });
 
+    it('should handle API validation errors (e.g. identifier already exists)', async () => {
+      const error: any = new Error('project identifier TEST already exists');
+      error.statusCode = 400;
+      mockClient.projects.createProject.mockRejectedValue(error);
+
+      await expect(
+        callTool('create', { title: 'New Project', identifier: 'TEST' }),
+      ).rejects.toThrow('Failed to create project: project identifier TEST already exists');
+    });
+
     it('should handle API errors', async () => {
       mockClient.projects.createProject.mockRejectedValue(new Error('API Error'));
 
@@ -563,6 +573,16 @@ describe('Projects Tool', () => {
       await expect(callTool('update', { id: 999, title: 'New Title' })).rejects.toThrow(
         'Project with ID 999 not found',
       );
+    });
+
+    it('should handle API validation errors (e.g. identifier already exists)', async () => {
+      const error: any = new Error('project identifier TEST already exists');
+      error.statusCode = 400;
+      mockClient.projects.updateProject.mockRejectedValue(error);
+
+      await expect(
+        callTool('update', { id: 1, title: 'New Title', identifier: 'TEST' }),
+      ).rejects.toThrow('Failed to update project: project identifier TEST already exists');
     });
 
     it('should handle API errors', async () => {
