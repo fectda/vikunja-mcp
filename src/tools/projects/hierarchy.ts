@@ -8,7 +8,11 @@ import { MCPError, ErrorCode } from '../../types';
 import { getClientFromContext } from '../../client';
 import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
 import { validateId, validateMoveConstraints } from './validation';
-import { createProjectResponse, createProjectTreeResponse, createBreadcrumbResponse } from './response-formatter';
+import {
+  createProjectResponse,
+  createProjectTreeResponse,
+  createBreadcrumbResponse,
+} from './response-formatter';
 import { formatAorpAsMarkdown } from '../../utils/response-factory';
 
 // MCP response type
@@ -76,7 +80,7 @@ interface ProjectTreeNode extends Project {
  */
 export async function getProjectChildren(
   args: GetChildrenArgs,
-  _context: unknown
+  _context: unknown,
 ): Promise<McpResponse> {
   const { id, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -104,7 +108,7 @@ export async function getProjectChildren(
       { parentId: id, count: children.length },
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -112,8 +116,8 @@ export async function getProjectChildren(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(response.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -126,11 +130,15 @@ export async function getProjectChildren(
 /**
  * Builds a complete project tree
  */
-export async function getProjectTree(
-  args: GetTreeArgs,
-  _context: unknown
-): Promise<McpResponse> {
-  const { id, maxDepth = 10, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
+export async function getProjectTree(args: GetTreeArgs, _context: unknown): Promise<McpResponse> {
+  const {
+    id,
+    maxDepth = 10,
+    includeArchived = false,
+    verbosity,
+    useOptimizedFormat,
+    useAorp,
+  } = args;
 
   // Validate that project ID is provided for tree operations
   if (!id) {
@@ -171,7 +179,9 @@ export async function getProjectTree(
     } else {
       // Build forest of all root projects
       treeData = rootProjects
-        .map((project: Project) => buildProjectTree(project, allProjects, 0, maxDepth, includeArchived))
+        .map((project: Project) =>
+          buildProjectTree(project, allProjects, 0, maxDepth, includeArchived),
+        )
         .filter(Boolean) as ProjectTreeNode[];
 
       totalNodes = treeData.reduce((sum, node) => sum + countTreeNodes(node), 0);
@@ -193,20 +203,15 @@ export async function getProjectTree(
       options1.useAorp = useAorp;
     }
 
-    const result = createProjectTreeResponse(
-      treeData,
-      actualDepth,
-      totalNodes,
-      options1
-    );
+    const result = createProjectTreeResponse(treeData, actualDepth, totalNodes, options1);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -221,7 +226,7 @@ export async function getProjectTree(
  */
 export async function getProjectBreadcrumb(
   args: GetBreadcrumbArgs,
-  _context: unknown
+  _context: unknown,
 ): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -255,18 +260,15 @@ export async function getProjectBreadcrumb(
       options2.useAorp = useAorp;
     }
 
-    const result = createBreadcrumbResponse(
-      breadcrumb,
-      options2
-    );
+    const result = createBreadcrumbResponse(breadcrumb, options2);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
@@ -279,10 +281,7 @@ export async function getProjectBreadcrumb(
 /**
  * Moves a project to a new parent
  */
-export async function moveProject(
-  args: MoveProjectArgs,
-  _context: unknown
-): Promise<McpResponse> {
+export async function moveProject(args: MoveProjectArgs, _context: unknown): Promise<McpResponse> {
   const { id, parentProjectId, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -313,7 +312,10 @@ export async function moveProject(
     if (parentProjectId) {
       const parentProject = allProjects.find((p: Project) => p.id === parentProjectId);
       if (!parentProject) {
-        throw new MCPError(ErrorCode.NOT_FOUND, `Parent project with ID ${parentProjectId} not found`);
+        throw new MCPError(
+          ErrorCode.NOT_FOUND,
+          `Parent project with ID ${parentProjectId} not found`,
+        );
       }
     }
 
@@ -324,9 +326,7 @@ export async function moveProject(
     }
     const updatedProject = await client.projects.updateProject(id, updateData as Project);
 
-    const parentInfo = parentProjectId
-      ? ` to parent project ${parentProjectId}`
-      : ' to root level';
+    const parentInfo = parentProjectId ? ` to parent project ${parentProjectId}` : ' to root level';
 
     const result = createProjectResponse(
       'move_project',
@@ -335,11 +335,11 @@ export async function moveProject(
       {
         oldParentProjectId: currentProject.parent_project_id,
         newParentProjectId: parentProjectId,
-        movedProjectId: id
+        movedProjectId: id,
       },
       verbosity,
       useOptimizedFormat,
-      useAorp
+      useAorp,
     );
 
     return {
@@ -347,14 +347,14 @@ export async function moveProject(
         {
           type: 'text' as const,
           text: formatAorpAsMarkdown(result.response),
-        }
-      ]
+        },
+      ],
     };
   } catch (error) {
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(error, 'move project', id, `Project with ID ${id} not found`);
+    throw handleStatusCodeError(error, 'move project', id);
   }
 }
 
@@ -366,7 +366,7 @@ function buildProjectTree(
   allProjects: Project[],
   currentDepth: number,
   maxDepth: number,
-  includeArchived: boolean = false
+  includeArchived: boolean = false,
 ): ProjectTreeNode | null {
   if (currentDepth >= maxDepth) {
     return null;
@@ -376,7 +376,7 @@ function buildProjectTree(
     .filter((p: Project) => p.parent_project_id === project.id)
     .filter((p: Project) => includeArchived || !p.is_archived)
     .map((child: Project) =>
-      buildProjectTree(child, allProjects, currentDepth + 1, maxDepth, includeArchived)
+      buildProjectTree(child, allProjects, currentDepth + 1, maxDepth, includeArchived),
     )
     .filter(Boolean) as ProjectTreeNode[];
 
@@ -401,7 +401,7 @@ function getTreeDepth(node: ProjectTreeNode): number {
   if (node.children.length === 0) {
     return node.depth;
   }
-  return Math.max(...node.children.map(child => getTreeDepth(child)));
+  return Math.max(...node.children.map((child) => getTreeDepth(child)));
 }
 
 /**
@@ -416,7 +416,7 @@ function buildBreadcrumb(targetId: number, allProjects: Project[]): Project[] {
     if (visited.has(currentId)) {
       throw new MCPError(
         ErrorCode.INTERNAL_ERROR,
-        'Circular reference detected in project hierarchy while building breadcrumb'
+        'Circular reference detected in project hierarchy while building breadcrumb',
       );
     }
 

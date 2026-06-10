@@ -219,12 +219,7 @@ export async function getProject(args: GetProjectArgs): Promise<McpResponse> {
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(
-      error,
-      'Failed to get project',
-      id,
-      `Project with ID ${id} not found`,
-    );
+    throw handleStatusCodeError(error, 'Failed to get project', id);
   }
 }
 
@@ -490,12 +485,7 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(
-      error,
-      'Failed to update project',
-      id,
-      `Project with ID ${id} not found`,
-    );
+    throw handleStatusCodeError(error, 'Failed to update project', id);
   }
 }
 
@@ -537,12 +527,7 @@ export async function deleteProject(args: DeleteProjectArgs): Promise<McpRespons
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(
-      error,
-      'Failed to delete project',
-      id,
-      `Project with ID ${id} not found`,
-    );
+    throw handleStatusCodeError(error, 'Failed to delete project', id);
   }
 }
 
@@ -610,12 +595,7 @@ export async function archiveProject(args: ArchiveProjectArgs): Promise<McpRespo
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(
-      error,
-      'Failed to archive project',
-      id,
-      `Project with ID ${id} not found`,
-    );
+    throw handleStatusCodeError(error, 'Failed to archive project', id);
   }
 }
 
@@ -683,11 +663,6 @@ export async function unarchiveProject(args: ArchiveProjectArgs): Promise<McpRes
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(
-      error,
-      'Failed to unarchive project',
-      id,
-      `Project with ID ${id} not found`,
-    );
+    throw handleStatusCodeError(error, 'Failed to unarchive project', id);
   }
 }
