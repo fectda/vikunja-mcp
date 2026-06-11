@@ -98,6 +98,15 @@ describe('Error Handler Utilities', () => {
       expect(result.message).toBe(customMessage);
     });
 
+    it('should append sanitized upstream message to 404 default messages', () => {
+      const error = { statusCode: 404, message: 'Upstream project not found' };
+      const result = handleStatusCodeError(error, 'get project', 123);
+
+      expect(result).toBeInstanceOf(MCPError);
+      expect(result.code).toBe(ErrorCode.NOT_FOUND);
+      expect(result.message).toBe('Project with ID 123 not found: Upstream project not found');
+    });
+
     it('should use and sanitize custom message for non-404 status codes', () => {
       const error = { statusCode: 403 };
       const customMessage = 'Permission denied for /Users/test/config.js';

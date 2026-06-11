@@ -1589,6 +1589,11 @@ describe('Projects Tool', () => {
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('move_project');
       expect(markdown).toContain('parent project 1');
+
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(2, {
+        title: 'Project to Move',
+        parent_project_id: 1,
+      });
     });
 
     it('should move project to root', async () => {
@@ -1607,6 +1612,11 @@ describe('Projects Tool', () => {
       const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('root level');
+
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
+        title: 'Project',
+        parent_project_id: 0,
+      });
     });
 
     it('should prevent self-parent', async () => {
