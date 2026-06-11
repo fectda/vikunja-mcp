@@ -320,11 +320,15 @@ export async function moveProject(args: MoveProjectArgs, _context: unknown): Pro
     }
 
     // Perform the move
-    const updateData: { parent_project_id?: number } = {};
-    if (parentProjectId !== undefined) {
-      updateData.parent_project_id = parentProjectId;
-    }
-    const updatedProject = await client.projects.updateProject(id, updateData as Project);
+    const updateData: { parent_project_id: number; title: string } = {
+      parent_project_id: parentProjectId !== undefined ? parentProjectId : 0,
+      title: currentProject.title,
+    };
+
+    const updatedProject = await client.projects.updateProject(
+      id,
+      updateData as unknown as Project,
+    );
 
     const parentInfo = parentProjectId ? ` to parent project ${parentProjectId}` : ' to root level';
 
