@@ -255,7 +255,9 @@ describe('Labels Tool', () => {
           subcommand: 'get',
           id: 999,
         }),
-      ).rejects.toThrow(new MCPError(ErrorCode.NOT_FOUND, 'Label with ID 999 not found'));
+      ).rejects.toThrow(
+        new MCPError(ErrorCode.NOT_FOUND, 'Label with ID 999 not found: Not found'),
+      );
     });
   });
 
@@ -502,7 +504,9 @@ describe('Labels Tool', () => {
           subcommand: 'delete',
           id: 999,
         }),
-      ).rejects.toThrow(new MCPError(ErrorCode.NOT_FOUND, 'Label with ID 999 not found'));
+      ).rejects.toThrow(
+        new MCPError(ErrorCode.NOT_FOUND, 'Label with ID 999 not found: Not found'),
+      );
     });
   });
 

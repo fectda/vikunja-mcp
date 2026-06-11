@@ -149,9 +149,20 @@ class SecureErrorHandler {
         const resourceInfo = resourceId ? ` with ID ${resourceId}` : '';
         const resourceType = this.extractResourceType(operation);
 
+        let upstreamMsg = '';
+        if (
+          'message' in error &&
+          typeof (error as { message: unknown }).message === 'string' &&
+          (error as { message: string }).message
+        ) {
+          upstreamMsg = `: ${this.sanitize((error as { message: string }).message)}`;
+        } else if (error instanceof Error && error.message) {
+          upstreamMsg = `: ${this.sanitize(error.message)}`;
+        }
+
         return new MCPError(
           ErrorCode.NOT_FOUND,
-          `${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}${resourceInfo} not found`,
+          `${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}${resourceInfo} not found${upstreamMsg}`,
         );
       }
 

@@ -346,7 +346,10 @@ describe('Projects Tool - Nested Project Features', () => {
       expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('**Operation:** move_project');
       expect(markdown).toContain('Moved project "Orphan Project" to parent project 1');
-      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(5, { parent_project_id: 1 });
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(5, {
+        title: 'Orphan Project',
+        parent_project_id: 1,
+      });
     });
 
     it('should move project to root level', async () => {
@@ -363,6 +366,10 @@ describe('Projects Tool - Nested Project Features', () => {
       expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('**Operation:** move_project');
       expect(markdown).toContain('Moved project "Child Project 1" to root level');
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(2, {
+        title: 'Child Project 1',
+        parent_project_id: 0,
+      });
     });
 
     it('should prevent moving project to itself', async () => {
