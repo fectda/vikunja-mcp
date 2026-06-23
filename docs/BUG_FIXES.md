@@ -37,6 +37,34 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 
 **Verify Report**: See `openspec/changes/archive/2026-06-06-fix-projects-update-identifier/archive-report.md`.
 
+### Consolidated PRD Fixes: Export Password, Missing Fields, Sharing Endpoints (2026-06-23)
+
+**Problem**: Three high-severity issues: (1) export password was required when it should fallback to env var; (2) missing `identifier` field in project update schema and `field`/`value` in task bulk-update schema caused silent data loss; (3) project sharing endpoints assumed singular GET endpoints that don't exist in the Vikunja API, causing 405 errors.
+
+**Root Cause**: (1) Schema made password mandatory with no env fallback; (2) Zod schemas were missing fields that the API supports; (3) Code assumed `GET /projects/{id}/share/{shareId}` and similar singular endpoints, but Vikunja only provides list endpoints.
+
+**Solution (Fix)**:
+
+- Made `password` optional in export schema with `process.env.VIKUNJA_EXPORT_PASSWORD` fallback
+- Added `identifier` to project update schema and pass-through in payload
+- Added `field` and `value` to task bulk-update schema and pass-through in payload
+- Rewrote `getTeamShare` to use `getTeamShares` list + client-side filtering by team ID
+- Rewrote `getLinkShare` to use `getLinkShares` list + client-side filtering by share ID
+- Removed pre-flight GET check from `deleteLinkShare` — DELETE handles 404s naturally
+
+**Affected Files**:
+
+- `src/tools/export.ts`
+- `src/tools/projects/index.ts`
+- `src/tools/projects/crud.ts`
+- `src/tools/tasks/index.ts`
+- `src/tools/tasks/bulk-operations.ts`
+- `src/tools/projects/sharing.ts`
+- `src/tools/projects/team-sharing.ts`
+- Related test files
+
+**Verify Report**: See `openspec/changes/archive/2026-06-23-fix-consolidated-prds/archive-report.md`.
+
 ### teams.members.list: 405 Method Not Allowed (2026-06-06)
 
 **Problem**: The `teams.members.list` subcommand was failing with a `405 Method Not Allowed` error.
