@@ -41,3 +41,14 @@ The system MUST apply `this.sanitize()` to the `customMessage` before wrapping i
 - WHEN `handleStatusCode` uses the `customMessage` for an error response
 - THEN it MUST pass the message through `this.sanitize()`
 - AND construct the MCPError using the sanitized output
+
+### Requirement: Error Handler Transparency for 404
+
+The system MUST propagate sanitized upstream validation errors for 404 status codes rather than masking them completely.
+
+#### Scenario: Genuine 404 preserves the upstream message
+
+- GIVEN an API call that returns a 404 error
+- WHEN `handleStatusCodeError` receives a 404 from an upstream API call
+- THEN the returned message includes the original upstream message
+- AND security sanitization is NOT bypassed

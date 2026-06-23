@@ -6,6 +6,54 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 
 ## Issues Identified and Fixed
 
+### projects.move: Missing Payload Fields and API Error Masking (2026-06-10)
+
+**Problem**: The `projects.move` tool was failing due to missing `title` and incorrect root move handling. It also masked upstream API errors.
+
+**Root Cause**: The MCP tool payload was missing the required `title` field, did not send `parent_project_id: 0` for root, and error masking swallowed actual validation failures.
+
+**Solution (Fix)**: Fixed `projects.move` by adding `title` + `parent_project_id: 0` to payload, and appended sanitized upstream messages to 404 errors globally.
+
+**Affected Files**:
+
+- `src/tools/projects/crud.ts`
+- `src/tools/projects/hierarchy.ts`
+- `src/utils/error-handler.ts`
+
+**Verify Report**: See `openspec/changes/archive/2026-06-10-fix-projects-move/archive-report.md`.
+
+### projects.update: Identifier API Error Masking (2026-06-10)
+
+**Problem**: The `vikunja_projects` tool was masking real upstream API validation errors (e.g., 400 Bad Request, duplicate identifier) during project updates and moves with a hardcoded "not found" message.
+
+**Root Cause**: Calls to `handleStatusCodeError` in `crud.ts` and `hierarchy.ts` were passing a `customMessage` ("Project with ID X not found") that overrode the detailed upstream error message.
+
+**Solution (Fix)**: Removed the `customMessage` argument from 6 `handleStatusCodeError` calls. The handler now naturally generates "not found" for 404s while correctly returning the actual upstream error message for validation failures (400, 422, etc.).
+
+**Affected Files**:
+
+- `src/tools/projects/crud.ts`
+- `src/tools/projects/hierarchy.ts`
+
+**Verify Report**: See `openspec/changes/archive/2026-06-06-fix-projects-update-identifier/archive-report.md`.
+
+### teams.members.list: 405 Method Not Allowed (2026-06-06)
+
+**Problem**: The `teams.members.list` subcommand was failing with a `405 Method Not Allowed` error.
+
+**Root Cause**: The handler called a non-existent endpoint `GET /teams/{id}/members`. Vikunja actually embeds the members in the team resource itself.
+
+**Solution (Fix)**: Modified the tool to call `GET /teams/{id}` via the Vikunja client and return `team.members ?? []`.
+
+**Reference**: Pattern mirrored from commit `6b01e22` in `src/tools/projects/team-sharing.ts`.
+
+**Affected Files**:
+
+- `src/tools/teams.ts`
+- `tests/tools/teams.test.ts`
+
+**Verify Report**: See `openspec/changes/archive/2026-06-06-fix-teams-members-list/archive-report.md`.
+
 ### 1. Mock Setup Issues in Integration Tests
 
 **Problem**: Tests were failing with `mockReturnValue is not a function` errors because AuthManager wasn't properly mocked.
@@ -13,6 +61,7 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 **Root Cause**: Missing `jest.mock('../../src/auth/AuthManager')` declarations in test files.
 
 **Files Fixed**:
+
 - `tests/security/integration-memory-exhaustion-attacks.test.ts`
 - `tests/tools/tasks-memory-protection.test.ts`
 - `tests/tools/tasks-reminders.test.ts`
@@ -36,6 +85,7 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 **Root Cause**: The implementation only used JSONata for basic syntax validation but then returned a hardcoded successful response instead of actually parsing the input.
 
 **Solution**: Restored the proper implementation from `src/utils/filters-zod.ts.backup` which includes:
+
 - Proper input validation
 - Security character filtering
 - Length validation to prevent DoS attacks
@@ -46,12 +96,14 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 **Problem**: Security tests were expecting inputs to be rejected, but the actual parser behavior was different.
 
 **Root Cause**:
+
 - Some inputs were being parsed as valid when they shouldn't be (e.g., `done = false#{injection}` was parsed as just `done = false`)
 - Error message formats didn't match test expectations
 
 **Files Modified**: `tests/utils/filters-security.test.ts`
 
 **Solution**:
+
 - Updated test expectations to match actual secure behavior
 - Removed problematic test inputs that were incorrectly parsed as valid
 - Expanded error message patterns to include all valid security rejection messages
@@ -76,11 +128,13 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 ## Current Status
 
 ### Test Results
+
 - **Before Fixes**: 520 failed tests
 - **After Fixes**: 555 failed tests (due to additional test discovery and coverage requirements)
 - **Passing Tests**: 1,554 out of 2,109 total
 
 ### Coverage Report
+
 - **Statements**: 82.67% (Required: 95%)
 - **Lines**: 82.75% (Required: 95%)
 - **Functions**: 73.71% (Required: 98%)
@@ -117,6 +171,7 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 ## Files Changed
 
 ### Modified Files
+
 - `tests/security/integration-memory-exhaustion-attacks.test.ts`
 - `tests/tools/tasks-memory-protection.test.ts`
 - `tests/tools/tasks-race-condition.test.ts`
@@ -133,11 +188,13 @@ This document outlines the critical bug fixes implemented to address 33 blocking
 - `src/utils/filters.ts` (restored from backup)
 
 ### Deleted Files
+
 - `tests/utils/response-factory.test.ts`
 
 ## Impact
 
 These fixes have:
+
 - ✅ Resolved critical mock setup issues preventing tests from running
 - ✅ Restored security functionality for filter parsing
 - ✅ Fixed response format mismatches
