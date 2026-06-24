@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This spec defines the behavior of the project tools, including the ability to persist the `identifier` field during project updates, ensuring correct usage of sharing endpoints, and team-based project sharing functionality.
+This spec defines the behavior of the project tools, including the ability to persist the `identifier` field during project updates, ensuring correct usage of sharing endpoints, and team-based and user-based project sharing functionality.
 
 ## Requirements
 
@@ -209,6 +209,89 @@ The system MUST allow removing a team share from a project.
 - THEN the API shall be called with DELETE /projects/123/teams/5
 - AND response shall indicate successful removal
 
+### Requirement: User Share Creation
+
+The system MUST allow sharing a project with a user by specifying the user ID and permission level.
+
+#### Scenario: Share project with read permission
+
+- GIVEN user is authenticated with valid JWT or API token
+- AND project ID 123 exists and user has admin permission
+- AND user ID 5 exists
+- WHEN calling `share-user` with projectId=123, userId=5, right='read'
+- THEN the API shall be called with PUT /projects/123/users/5 with right=0
+- AND response shall indicate successful share creation
+
+#### Scenario: Share project with admin permission
+
+- GIVEN user is authenticated with valid JWT or API token
+- AND project ID 123 exists and user has admin permission
+- AND user ID 5 exists
+- WHEN calling `share-user` with projectId=123, userId=5, right='admin'
+- THEN the API shall be called with PUT /projects/123/users/5 with right=2
+- AND response shall indicate successful share creation
+
+#### Scenario: Re-share project with user updates existing share
+
+- GIVEN project 123 is already shared with user 5 with read permission
+- WHEN calling `share-user` with projectId=123, userId=5, right='admin'
+- THEN the API shall update the existing share to admin permission
+- AND response shall indicate successful update
+
+### Requirement: User Share Listing
+
+The system MUST allow listing all user shares for a project.
+
+#### Scenario: List user shares on project
+
+- GIVEN user is authenticated with valid JWT or API token
+- AND project ID 123 has 2 user shares
+- WHEN calling `list-user-shares` with projectId=123
+- THEN the API shall be called to retrieve user shares
+- AND response shall contain list of user shares with usernames and permission levels
+- AND response shall indicate count of user shares
+
+#### Scenario: List user shares on project with pagination
+
+- GIVEN user is authenticated with valid JWT or API token
+- AND project ID 123 has multiple user shares
+- WHEN calling `list-user-shares` with projectId=123, page=1, perPage=10
+- THEN the API shall be called with pagination parameters
+- AND response shall return up to 10 user shares
+
+### Requirement: User Share Retrieval
+
+The system MUST allow getting details of a specific user share.
+
+#### Scenario: Get single user share
+
+- GIVEN user is authenticated with valid JWT or API token
+- AND project ID 123 has a share with user ID 5
+- WHEN calling `get-user-share` with projectId=123, userId=5
+- THEN response shall contain user share details including username and permission level
+
+### Requirement: User Share Update
+
+The system MUST allow updating the permission level of an existing user share.
+
+#### Scenario: Update user share permission
+
+- GIVEN project 123 is shared with user 5 with read permission
+- WHEN calling `update-user-share` with projectId=123, userId=5, right='admin'
+- THEN the API shall update the permission to admin level
+- AND response shall indicate successful update
+
+### Requirement: User Share Removal
+
+The system MUST allow removing a user share from a project.
+
+#### Scenario: Remove user share from project
+
+- GIVEN project 123 is shared with user 5
+- WHEN calling `remove-user-share` with projectId=123, userId=5
+- THEN the API shall be called with DELETE /projects/123/users/5
+- AND response shall indicate successful removal
+
 ### Requirement: Input Validation
 
 The system MUST validate all inputs according to RFC 2119 requirements.
@@ -236,6 +319,18 @@ The system MUST validate all inputs according to RFC 2119 requirements.
 - GIVEN user is authenticated
 - WHEN calling `share-team` with right=3
 - THEN system shall throw VALIDATION_ERROR with message indicating valid numeric values are 0, 1, 2
+
+#### Scenario: Validate user ID is required
+
+- GIVEN user is authenticated
+- WHEN calling `share-user` without userId
+- THEN system shall throw VALIDATION_ERROR with message indicating userId is required
+
+#### Scenario: Validate user sharing right is valid
+
+- GIVEN user is authenticated
+- WHEN calling `share-user` with right='invalid'
+- THEN system shall throw VALIDATION_ERROR with message indicating valid options are read, write, admin
 
 ### Requirement: Error Handling
 
@@ -267,19 +362,32 @@ The system MUST handle API errors gracefully.
 - WHEN calling `get-team-share` with projectId=123, teamId=5
 - THEN system shall throw NOT_FOUND error indicating team share not found
 
+#### Scenario: Handle user share not found for retrieval
+
+- GIVEN user is authenticated
+- AND project 123 exists but is not shared with user 5
+- WHEN calling `get-user-share` with projectId=123, userId=5
+- THEN system shall throw NOT_FOUND error indicating user share not found
+
 ### Requirement: Authentication
 
-The system MUST require authentication for team sharing operations.
+The system MUST require authentication for team and user sharing operations.
 
-#### Scenario: Unauthenticated request rejected
+#### Scenario: Unauthenticated request rejected for team sharing
 
 - GIVEN user is not authenticated
 - WHEN calling any team share subcommand (share-team, list-team-shares, etc.)
 - THEN system shall throw AUTH_REQUIRED error
 
+#### Scenario: Unauthenticated request rejected for user sharing
+
+- GIVEN user is not authenticated
+- WHEN calling any user share subcommand (share-user, list-user-shares, etc.)
+- THEN system shall throw AUTH_REQUIRED error
+
 ### Requirement: Tool Registration
 
-The existing `vikunja_projects` tool registration MUST be modified to include the new team sharing subcommands.
+The existing `vikunja_projects` tool registration MUST be modified to include the new team and user sharing subcommands.
 
 (Previously: vikunja_projects included subcommands: list, create, get, update, delete, share, list-shares, get-share, delete-share, auth-share)
 
@@ -288,3 +396,9 @@ The existing `vikunja_projects` tool registration MUST be modified to include th
 - GIVEN project tool is registered
 - WHEN registration occurs
 - THEN vikunja_projects tool shall include subcommands: share-team, list-team-shares, get-team-share, update-team-share, remove-team-share
+
+#### Scenario: Register new user sharing subcommands
+
+- GIVEN project tool is registered
+- WHEN registration occurs
+- THEN vikunja_projects tool shall include subcommands: share-user, list-user-shares, get-user-share, update-user-share, remove-user-share
