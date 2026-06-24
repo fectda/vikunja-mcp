@@ -66,6 +66,19 @@ import {
   type RemoveTeamShareArgs,
 } from './team-sharing';
 
+import {
+  shareUser,
+  listUserShares,
+  getUserShare,
+  updateUserShare,
+  removeUserShare,
+  type ShareUserArgs,
+  type ListUserSharesArgs,
+  type GetUserShareArgs,
+  type UpdateUserShareArgs,
+  type RemoveUserShareArgs,
+} from './user-sharing';
+
 /**
  * Legacy single-tool interface for backward compatibility
  * Registers a single tool with all subcommands like the original implementation
@@ -101,6 +114,11 @@ export function registerProjectsTool(
         'get-team-share',
         'update-team-share',
         'remove-team-share',
+        'share-user',
+        'list-user-shares',
+        'get-user-share',
+        'update-user-share',
+        'remove-user-share',
       ]),
       // CRUD arguments
       id: z.number().positive().optional(),
@@ -123,6 +141,7 @@ export function registerProjectsTool(
       projectId: z.number().positive().optional(),
       shareId: z.string().optional(),
       teamId: z.number().positive().optional(),
+      userId: z.number().positive().optional(),
       shareHash: z.string().optional(),
       right: z.union([z.enum(['read', 'write', 'admin']), z.number()]).optional(),
       name: z.string().optional(),
@@ -369,6 +388,89 @@ export function registerProjectsTool(
               );
             }
 
+            // User sharing operations
+            case 'share-user': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.userId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+              }
+              if (args.right === undefined) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Permission right is required');
+              }
+              return await shareUser(
+                {
+                  projectId: args.projectId,
+                  userId: args.userId,
+                  right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
+                },
+                authManager,
+              );
+            }
+
+            case 'list-user-shares': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              const listUserArgs: ListUserSharesArgs = { projectId: args.projectId };
+              if (args.page !== undefined) listUserArgs.page = args.page;
+              if (args.perPage !== undefined) listUserArgs.perPage = args.perPage;
+              return await listUserShares(listUserArgs, authManager);
+            }
+
+            case 'get-user-share': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.userId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+              }
+              return await getUserShare(
+                {
+                  projectId: args.projectId,
+                  userId: args.userId,
+                },
+                authManager,
+              );
+            }
+
+            case 'update-user-share': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.userId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+              }
+              if (args.right === undefined) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Permission right is required');
+              }
+              return await updateUserShare(
+                {
+                  projectId: args.projectId,
+                  userId: args.userId,
+                  right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
+                },
+                authManager,
+              );
+            }
+
+            case 'remove-user-share': {
+              if (!args.projectId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              }
+              if (!args.userId) {
+                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+              }
+              return await removeUserShare(
+                {
+                  projectId: args.projectId,
+                  userId: args.userId,
+                },
+                authManager,
+              );
+            }
+
             default:
               throw new MCPError(
                 ErrorCode.VALIDATION_ERROR,
@@ -407,6 +509,11 @@ export type {
   GetTeamShareArgs,
   UpdateTeamShareArgs,
   RemoveTeamShareArgs,
+  ShareUserArgs,
+  ListUserSharesArgs,
+  GetUserShareArgs,
+  UpdateUserShareArgs,
+  RemoveUserShareArgs,
 };
 
 // Export all functions for direct use if needed
@@ -439,4 +546,11 @@ export {
   getTeamShare,
   updateTeamShare,
   removeTeamShare,
+
+  // User Sharing
+  shareUser,
+  listUserShares,
+  getUserShare,
+  updateUserShare,
+  removeUserShare,
 };
