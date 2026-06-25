@@ -485,7 +485,7 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(error, 'Failed to update project', id);
+    throw handleStatusCodeError(error, 'update project', id);
   }
 }
 
