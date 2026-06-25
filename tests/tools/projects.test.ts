@@ -640,6 +640,50 @@ describe('Projects Tool', () => {
         }
       });
     });
+
+    describe('identifier validation', () => {
+      it('should reject identifier longer than 10 characters', async () => {
+        await expect(callTool('update', { id: 1, identifier: '12345678901' })).rejects.toThrow(
+          'must not exceed 10 characters',
+        );
+      });
+
+      it('should accept identifier of exactly 10 characters', async () => {
+        mockClient.projects.getProject.mockResolvedValue(mockProject);
+        mockClient.projects.updateProject.mockResolvedValue(mockProject);
+
+        const result = await callTool('update', {
+          id: 1,
+          identifier: '1234567890',
+        });
+
+        expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
+          identifier: '1234567890',
+          title: 'Test Project',
+        });
+        expect(result.content[0].type).toBe('text');
+        const markdown = result.content[0].text;
+        expect(markdown).toContain('Project "Test Project" updated successfully');
+      });
+
+      it('should accept identifier of 1-9 characters', async () => {
+        mockClient.projects.getProject.mockResolvedValue(mockProject);
+        mockClient.projects.updateProject.mockResolvedValue(mockProject);
+
+        const result = await callTool('update', {
+          id: 1,
+          identifier: 'abc',
+        });
+
+        expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
+          identifier: 'abc',
+          title: 'Test Project',
+        });
+        expect(result.content[0].type).toBe('text');
+        const markdown = result.content[0].text;
+        expect(markdown).toContain('Project "Test Project" updated successfully');
+      });
+    });
   });
 
   describe('delete subcommand', () => {

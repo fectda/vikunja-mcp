@@ -381,6 +381,11 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
       validateHexColor(hexColor);
     }
 
+    // Validate identifier max length early if provided
+    if (identifier !== undefined && identifier.length > 10) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Identifier must not exceed 10 characters');
+    }
+
     const client = await getClientFromContext();
 
     // Get current project
