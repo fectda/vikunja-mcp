@@ -4,10 +4,10 @@
 
 ## Status
 
-**MCP Version**: main (e0cc18d)
-**Date**: 2026-06-01
+**MCP Version**: 0.2.2 (8c4096d)
+**Date**: 2026-06-01 (original) / 2026-06-24 (updated)
 **Reported by**: vikunja-mcp-docker wrapper
-**Severity**: Medium
+**Severity**: High (tools removed entirely)
 
 ---
 
@@ -16,6 +16,37 @@
 `vikunja_request_user_export` and `vikunja_download_user_export` require the user's Vikunja password as a parameter. When called by an LLM agent, the agent does not know the password — it was only used during initial authentication and is not available in the environment. The tool should fall back to `VIKUNJA_EXPORT_PASSWORD` environment variable when the `password` argument is not explicitly provided.
 
 Additionally, there is **no admin requirement** for export — the API endpoint works for any authenticated user. Error messages suggesting otherwise are misleading.
+
+---
+
+## Update 2026-06-24: Tool removed upstream
+
+### New Situation
+
+Upstream commit `8c4096d` has **entirely removed** both export tools from the MCP codebase:
+- `vikunja_request_user_export` — no longer exists
+- `vikunja_download_user_export` — no longer exists
+
+### New Error
+
+When a client or LLM agent attempts to call either tool, the MCP responds with:
+
+```
+Tool vikunja_request_user_export not found
+```
+
+This is an MCP protocol-level error — the tool name is not registered in the server's tool list.
+
+### Impact
+
+- The password fallback fix (`VIKUNJA_EXPORT_PASSWORD`) documented in this PRD is now **moot** — there are no export tools to apply it to.
+- Users have **no way** to request data exports through the MCP.
+- **Severity upgrade**: from Medium (needs fix) to High (missing feature).
+- **Available workaround**: Users must call the Vikunja API directly to request and download exports.
+
+### Recommended Action
+
+Upstream needs to reimplement the export tools if they want to restore export functionality. When reimplementing, they should incorporate the `VIKUNJA_EXPORT_PASSWORD` fallback pattern documented in the Proposed Solution section below.
 
 ---
 

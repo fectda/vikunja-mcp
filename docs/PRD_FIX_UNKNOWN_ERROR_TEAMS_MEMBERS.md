@@ -4,10 +4,40 @@
 
 ## Status
 
-**MCP Version**: main (e0cc18d)
-**Date**: 2026-06-01
+**MCP Version**: 0.2.2 (8c4096d)
+**Date**: 2026-06-01 (original) / 2026-06-24 (updated)
 **Reported by**: vikunja-mcp-docker wrapper
-**Severity**: High
+**Severity**: High (resolved — see update below)
+
+---
+
+## Update 2026-06-24: "Unknown error" resolved, 403 behavior exposed
+
+### What Changed
+
+Upstream commit `b9cf833` fixed the `SecureErrorHandler.handleStatusCode()` to properly extract `.message` from plain objects. The "Unknown error" is now **resolved** — the MCP correctly propagates the actual Vikunja API error message.
+
+### Current Behavior
+
+The original "Unknown error" no longer occurs. Instead, the MCP now returns the real API error:
+
+```
+Failed to list members for team 999999: {"message":"You don't have the permission to see this"}
+```
+
+This is the Vikunja API responding with **HTTP 403 Forbidden** (not 404) when queried for a non-existent team's members. The API treats an invalid team ID as a permission denial rather than a "not found" scenario.
+
+### Analysis
+
+- **This is Vikunja API behavior**, not an MCP bug. The [Vikunja API design](https://vikunja.io/docs/api-v1/) returns 403 for resources the user cannot access, regardless of whether the resource exists (to avoid leaking existence information).
+- The MCP error handler is now working correctly — it passes through the API's response verbatim.
+- The fix `b9cf833` (commit referenced in this PRD's Proposed Solution / Option A) resolved the underlying handler issue.
+
+### Remaining Considerations
+
+1. **Error message clarity**: The raw API JSON `{"message":"You don't have the permission to see this"}` is technically correct but less helpful than a 404 "Team not found" would be.
+2. **Potential enhancement**: The MCP could normalize 403 responses for team operations to include the team ID in the error message (e.g., `"Team 999999 not found or inaccessible"`) but this is a UX improvement, not a bug fix.
+3. **Status**: The core bug (Unknown error) is FIXED. The remaining behavior is upstream API design.
 
 ---
 
