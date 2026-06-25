@@ -210,6 +210,14 @@ export function registerExportTool(
         .describe('Vikunja password. Falls back to VIKUNJA_EXPORT_PASSWORD env var.'),
     },
     async (args) => {
+      // Export operations require JWT authentication
+      if (authManager.getAuthType() !== 'jwt') {
+        throw new MCPError(
+          ErrorCode.PERMISSION_DENIED,
+          'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
+        );
+      }
+
       try {
         const password = args.password || process.env.VIKUNJA_EXPORT_PASSWORD;
         if (!password) {
@@ -292,6 +300,14 @@ export function registerExportTool(
         .describe('Vikunja password. Falls back to VIKUNJA_EXPORT_PASSWORD env var.'),
     },
     async (args) => {
+      // Export operations require JWT authentication
+      if (authManager.getAuthType() !== 'jwt') {
+        throw new MCPError(
+          ErrorCode.PERMISSION_DENIED,
+          'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
+        );
+      }
+
       try {
         const password = args.password || process.env.VIKUNJA_EXPORT_PASSWORD;
         if (!password) {

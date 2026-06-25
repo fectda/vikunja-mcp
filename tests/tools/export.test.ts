@@ -397,6 +397,26 @@ describe('Export Tool', () => {
       );
     });
 
+    describe('Authentication', () => {
+      it('should require JWT authentication for user export request', async () => {
+        const mockAuthManagerApiToken = {
+          isAuthenticated: jest.fn().mockReturnValue(true),
+          getAuthType: jest.fn().mockReturnValue('api-token'),
+        } as unknown as MockAuthManager;
+
+        mockServer.tool.mockClear();
+        registerExportTool(mockServer, mockAuthManagerApiToken);
+
+        const handler = mockServer.tool.mock.calls.find(
+          (call) => call[0] === 'vikunja_request_user_export',
+        )?.[3];
+
+        await expect(handler?.({ password: 'test-password' })).rejects.toThrow(
+          'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
+        );
+      });
+    });
+
     it('should request user data export successfully', async () => {
       jest.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
@@ -556,6 +576,26 @@ describe('Export Tool', () => {
         }),
         expect.any(Function),
       );
+    });
+
+    describe('Authentication', () => {
+      it('should require JWT authentication for user export download', async () => {
+        const mockAuthManagerApiToken = {
+          isAuthenticated: jest.fn().mockReturnValue(true),
+          getAuthType: jest.fn().mockReturnValue('api-token'),
+        } as unknown as MockAuthManager;
+
+        mockServer.tool.mockClear();
+        registerExportTool(mockServer, mockAuthManagerApiToken);
+
+        const handler = mockServer.tool.mock.calls.find(
+          (call) => call[0] === 'vikunja_download_user_export',
+        )?.[3];
+
+        await expect(handler?.({ password: 'test-password' })).rejects.toThrow(
+          'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
+        );
+      });
     });
 
     it('should handle missing authentication token in download', async () => {

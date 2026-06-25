@@ -111,7 +111,7 @@ describe('Tool Registration', () => {
       expect(registerExportTool).not.toHaveBeenCalled();
     });
 
-    it('should register all tools except users and export when using API token auth with clientFactory', () => {
+    it('should register all tools unconditionally when using API token auth with clientFactory', () => {
       // Arrange - test with API token auth and clientFactory
       const mockClientFactory = { test: 'factory' };
       mockAuthManager.isAuthenticated.mockReturnValue(true);
@@ -120,7 +120,7 @@ describe('Tool Registration', () => {
       // Act
       registerTools(mockServer, mockAuthManager, mockClientFactory);
 
-      // Assert - verify all tools except users and export are registered
+      // Assert - verify all tools are registered unconditionally (auth is per-method at runtime)
       expect(registerAuthTool).toHaveBeenCalledTimes(1);
       expect(registerAuthTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
@@ -180,9 +180,20 @@ describe('Tool Registration', () => {
         mockClientFactory,
       );
 
-      // These should NOT be called with API token auth (backward compatibility)
-      expect(registerUsersTool).not.toHaveBeenCalled();
-      expect(registerExportTool).not.toHaveBeenCalled();
+      // These ARE called because registration is unconditional with clientFactory
+      // Auth is enforced per-method at runtime, not at registration time
+      expect(registerUsersTool).toHaveBeenCalledTimes(1);
+      expect(registerUsersTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
+      expect(registerExportTool).toHaveBeenCalledTimes(1);
+      expect(registerExportTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
     });
 
     it('should register all tools including users and export when using JWT auth with clientFactory', () => {
@@ -269,7 +280,7 @@ describe('Tool Registration', () => {
       );
     });
 
-    it('should not register users and export tools when not authenticated with clientFactory', () => {
+    it('should register all tools unconditionally even when not authenticated with clientFactory', () => {
       // Arrange
       const mockClientFactory = { test: 'factory' };
       mockAuthManager.isAuthenticated.mockReturnValue(false);
@@ -277,7 +288,7 @@ describe('Tool Registration', () => {
       // Act
       registerTools(mockServer, mockAuthManager, mockClientFactory);
 
-      // Assert - other tools are registered but not users/export (backward compatibility)
+      // Assert - all tools are registered unconditionally (auth is per-method at runtime)
       expect(registerAuthTool).toHaveBeenCalledTimes(1);
       expect(registerAuthTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
@@ -337,9 +348,20 @@ describe('Tool Registration', () => {
         mockClientFactory,
       );
 
-      // These should NOT be called when not authenticated
-      expect(registerUsersTool).not.toHaveBeenCalled();
-      expect(registerExportTool).not.toHaveBeenCalled();
+      // These ARE called because registration is unconditional with clientFactory
+      // Auth is enforced per-method at runtime, not at registration time
+      expect(registerUsersTool).toHaveBeenCalledTimes(1);
+      expect(registerUsersTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
+      expect(registerExportTool).toHaveBeenCalledTimes(1);
+      expect(registerExportTool).toHaveBeenCalledWith(
+        mockServer,
+        mockAuthManager,
+        mockClientFactory,
+      );
     });
 
     it('should register tools in the correct order with JWT auth and clientFactory', () => {
