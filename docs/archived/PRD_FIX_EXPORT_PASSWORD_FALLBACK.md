@@ -1,200 +1,135 @@
-# PRD — `vikunja-mcp`: Export tools should read `VIKUNJA_EXPORT_PASSWORD` as password fallback
+# PRD — Bug: Export tools not registered (race condition in index.ts)
 
 **⚠️ CRITICAL RULE: THIS PRD MUST BE WRITTEN ENTIRELY IN ENGLISH.**
 
 ## Status
 
-**MCP Version**: 0.2.2 (8c4096d)
-**Date**: 2026-06-01 (original) / 2026-06-24 (updated)
+**Fork**: fectda/vikunja-mcp
+**Date**: 2026-06-25 (rewritten — original was against abandoned upstream)
 **Reported by**: vikunja-mcp-docker wrapper
-**Severity**: High (tools removed entirely)
+**Severity**: Medium (JWT-only tools not registered due to timing)
 
 ---
 
 ## Summary
 
-`vikunja_request_user_export` and `vikunja_download_user_export` require the user's Vikunja password as a parameter. When called by an LLM agent, the agent does not know the password — it was only used during initial authentication and is not available in the environment. The tool should fall back to `VIKUNJA_EXPORT_PASSWORD` environment variable when the `password` argument is not explicitly provided.
+`vikunja_request_user_export` and `vikunja_download_user_export` return `MCP error -32602: Tool vikunja_request_user_export not found`. The tools **exist** in the fork (`fectda/vikunja-mcp`) at `src/tools/export.ts`. The issue is a race condition in `src/index.ts`: `registerTools()` runs inside `factoryInitializationPromise` before `autoLoginWithCredentials()` completes. Export tools require JWT auth at registration time, so they never appear in the tool list.
 
-Additionally, there is **no admin requirement** for export — the API endpoint works for any authenticated user. Error messages suggesting otherwise are misleading.
-
----
-
-## Update 2026-06-24: Tool removed upstream
-
-### New Situation
-
-Upstream commit `8c4096d` has **entirely removed** both export tools from the MCP codebase:
-- `vikunja_request_user_export` — no longer exists
-- `vikunja_download_user_export` — no longer exists
-
-### New Error
-
-When a client or LLM agent attempts to call either tool, the MCP responds with:
-
-```
-Tool vikunja_request_user_export not found
-```
-
-This is an MCP protocol-level error — the tool name is not registered in the server's tool list.
-
-### Impact
-
-- The password fallback fix (`VIKUNJA_EXPORT_PASSWORD`) documented in this PRD is now **moot** — there are no export tools to apply it to.
-- Users have **no way** to request data exports through the MCP.
-- **Severity upgrade**: from Medium (needs fix) to High (missing feature).
-- **Available workaround**: Users must call the Vikunja API directly to request and download exports.
-
-### Recommended Action
-
-Upstream needs to reimplement the export tools if they want to restore export functionality. When reimplementing, they should incorporate the `VIKUNJA_EXPORT_PASSWORD` fallback pattern documented in the Proposed Solution section below.
+This PRD replaces the original version (written against `democratize-technology/vikunja-mcp`, which had removed the tools entirely).
 
 ---
 
 ## Expected Behavior
 
-An LLM agent should be able to call `vikunja_request_user_export` and `vikunja_download_user_export` **without** passing a `password` argument:
+When the MCP starts with JWT authentication (`VIKUNJA_USER` + `VIKUNJA_PASSWORD`), the export tools should appear in the tool list and be callable:
 
 ```
-vikunja_request_user_export()
-# → Successfully requested data export...
+vikunja_projects → found ✓
+vikunja_tasks → found ✓
+vikunja_request_user_export → found ✓
+vikunja_download_user_export → found ✓
 ```
-
-The tool should read `process.env.VIKUNJA_EXPORT_PASSWORD` when `password` is not provided in the arguments.
 
 ## Actual Behavior
 
-Currently both tools require `password: z.string().min(1)` as a mandatory parameter. When the LLM agent calls the tool without a password, Zod validation fails with a required field error. The LLM then infers incorrect reasons (e.g., "user needs admin privileges", "server limitation") because it has no way to know the password.
-
----
-
-## Steps to Reproduce
-
-1. Start the MCP with auto-login credentials
-2. Call `vikunja_request_user_export` without a password argument
-3. Observe the validation error
-
-**Test Data**:
 ```
-VIKUNJA_URL=http://vikunja:3456/api/v1
-VIKUNJA_USER=test
-VIKUNJA_PASSWORD=secret
+MCP error -32602: Tool vikunja_request_user_export not found
+MCP error -32602: Tool vikunja_download_user_export not found
 ```
-
----
-
-## Error Logs
-
-Direct API test with correct password:
-```json
-POST /user/export/request {"password":"correct"}
-→ 200 {"message":"Successfully requested data export..."}
-```
-
-Direct API test with wrong password:
-```json
-POST /user/export/request {"password":"wrong"}
-→ 400 {"code":1011,"message":"Wrong username or password."}
-```
-
-This confirms non-admin users CAN export — there is no admin restriction.
 
 ---
 
 ## Root Cause Analysis
 
-### Wrapper side (already fixed in entrypoint.sh)
-
-The `entrypoint.sh` previously did:
-```bash
-unset VIKUNJA_PASSWORD  # password lost after auto-login
-```
-
-Now it does:
-```bash
-export VIKUNJA_EXPORT_PASSWORD="${VIKUNJA_PASSWORD}"
-unset VIKUNJA_PASSWORD
-```
-
-This preserves the password in the MCP process environment under a different variable name.
-
-### MCP side (needs fix)
-
-In `src/tools/export.ts`, both `vikunja_request_user_export` and `vikunja_download_user_export` have:
+### Startup flow in `src/index.ts`
 
 ```typescript
-server.tool('vikunja_request_user_export', '...', {
-  password: z.string().min(1),  // ← mandatory, no fallback
-}, async (args) => {
-  const { password } = args;
-  // ...
-  const httpResponse = await fetch(`${baseUrl}/user/export/request`, {
-    body: JSON.stringify({ password }),
-  });
-```
+const factoryInitializationPromise = initializeFactory();
 
-The fix: make `password` optional and fall back to `process.env.VIKUNJA_EXPORT_PASSWORD`:
+async function initializeFactory() {
+  await autoLoginWithCredentials();       // Step 1: auth
+  const factory = await createVikunjaClientFactory(authManager);
+  await setGlobalClientFactory(factory);
 
-```typescript
-server.tool('vikunja_request_user_export', '...', {
-  password: z.string().min(1).optional(),  // ← optional now
-}, async (args) => {
-  const password = args.password || process.env.VIKUNJA_EXPORT_PASSWORD;
-  if (!password) {
-    throw new MCPError(
-      ErrorCode.VALIDATION_ERROR,
-      'Password is required for export. Pass it as an argument or set VIKUNJA_EXPORT_PASSWORD.',
-    );
+  if (authManager.isAuthenticated()) {    // Step 2: register tools
+    registerTools(server, authManager, clientFactory);
   }
+}
 ```
+
+### Registration logic in `registerTools()`
+
+```typescript
+function registerTools() {
+  // Always registered:
+  registerAuthTools(server, authManager);       // ✓
+  registerProjectTools(server, authManager);     // ✓
+  registerTaskTools(server, authManager);        // ✓
+
+  // Conditional — requires JWT:
+  if (authManager.isAuthenticated() && authManager.getAuthType() === 'jwt') {
+    registerExportTools(server);                 // ❌ never called
+  }
+}
+```
+
+When only `VIKUNJA_API_TOKEN` is set (no user/pass), `authManager.getAuthType()` returns `'api-token'`, so export tools are correctly skipped. **But when JWT auth IS available**, the race condition means `registerTools()` might fire before `autoLoginWithCredentials()` finishes setting the JWT session, so `getAuthType()` still returns undefined.
+
+### Why this happens
+
+`factoryInitializationPromise` is created at module load time, but `autoLoginWithCredentials()` is async — it performs a `fetch()` to `POST /api/v1/login`. If the login request is in-flight when `initializeFactory()` resolves its first `await`, `registerTools()` sees `isAuthenticated() === false` and skips JWT-dependent tools.
 
 ---
 
 ## Proposed Solution
 
-### Option A: Environment variable fallback (recommended)
+### Option A: Separate tool registration from auth (recommended)
 
-Make `password` optional in the Zod schema. When not provided, read `process.env.VIKUNJA_EXPORT_PASSWORD`:
+Split `initializeFactory()` into two phases:
 
 ```typescript
-password: z.string().min(1).optional(),
+const factoryInitializationPromise = initializeFactory();
 
-// In the handler:
-const password = args.password || process.env.VIKUNJA_EXPORT_PASSWORD;
-if (!password) {
-  throw new MCPError(ErrorCode.VALIDATION_ERROR,
-    'Password is required. Provide it as an argument or set VIKUNJA_EXPORT_PASSWORD.');
+async function initializeFactory() {
+  await autoLoginWithCredentials();
+  const factory = await createVikunjaClientFactory(authManager);
+  await setGlobalClientFactory(factory);
 }
+
+// Register tools AFTER auth is confirmed, not during factory init
+server.on('afterInit', () => {
+  registerProjectTools(server, authManager);
+  registerTaskTools(server, authManager);
+  if (authManager.isAuthenticated() && authManager.getAuthType() === 'jwt') {
+    registerExportTools(server);
+  }
+});
 ```
 
-Apply to both:
-- `vikunja_request_user_export`
-- `vikunja_download_user_export`
+### Option B: Defer JWT tool registration
 
-### Option B: Skip password check entirely (if Vikunja allows)
+Make export tools register dynamically when auth type becomes available:
 
-Test if the endpoint works without a password when using JWT auth. If yes, remove the password requirement entirely.
-
-**Result from testing**: The Vikunja API returns `"Wrong username or password."` (code 1011) when password is wrong, and doesn't accept empty/null passwords. So the password is mandatory per Vikunja's API.
-
-### Option C: Capture password on `connect`/`login`
-
-When the user calls `vikunja_auth.connect` or `vikunja_auth.login`, the MCP could ask for and cache the password in memory for the session duration. This avoids the environment variable pattern entirely.
-
-More complex but more secure (password stays in MCP process memory, not in env).
+```typescript
+authManager.on('authChanged', (authType) => {
+  if (authType === 'jwt') {
+    registerExportTools(server);
+  }
+});
+```
 
 ---
 
 ## Impact
 
 - **Affected endpoints**: `vikunja_request_user_export`, `vikunja_download_user_export`
-- **Affected users**: All users trying to export data via the MCP
-- **Available workaround**: Pass `password` explicitly in the tool arguments. But the LLM agent has no way to discover this password.
-- **Wrapper change**: `entrypoint.sh` already exports `VIKUNJA_EXPORT_PASSWORD` (committed in this PRD's companion PR)
+- **Affected users**: Users who authenticate with JWT (user + password) and need exports
+- **Available workaround**: Use API token auth (export tools are JWT-only, so they won't appear either — no workaround via MCP). Use direct Vikunja API for exports.
 
 ---
 
 ## References
 
-- Source: `src/tools/export.ts` — `vikunja_request_user_export` and `vikunja_download_user_export`
-- Source: `entrypoint.sh` — now exports `VIKUNJA_EXPORT_PASSWORD`
-- Vikunja API: `POST /user/export/request` and `POST /user/export/download` accept `{ password }` body
+- Source: `src/index.ts` — `initializeFactory()` and `registerTools()`
+- Source: `src/tools/export.ts` — export tool implementations (exist in fork)
+- Source: `src/auth/AuthManager.ts` — `getAuthType()` and `isAuthenticated()`

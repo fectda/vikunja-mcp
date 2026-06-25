@@ -1,90 +1,117 @@
-# PRD — Bug: projects.update (identifier) returns Project not found
+# PRD — Bug: projects.update (identifier) returns Invalid Data for identifiers > 10 chars
 
 **⚠️ CRITICAL RULE: THIS PRD MUST BE WRITTEN ENTIRELY IN ENGLISH.**
 
 ## Status
-**MCP Version**: 0.2.2 (Commit 8c4096d)
-**Date**: 2026-06-24
+
+**Fork**: fectda/vikunja-mcp
+**Date**: 2026-06-25
 **Reported by**: vikunja-mcp-docker wrapper
-**Severity**: Medium
+**Severity**: Low (test data issue + missing client-side validation)
 
 ---
 
 ## Summary
 
-The `projects.update` tool fails when attempting to update the `identifier` field. The error message changed after upstream commit `b9cf833` fixed error propagation (removed hardcoded `customMessage` from `crud.ts` and `hierarchy.ts`), revealing the real Vikunja API error. The underlying cause remains unchanged: `identifier` is missing from the Zod schema for updates.
+The `projects.update` tool fails with `Failed to Failed to update project: Invalid Data` when updating a project identifier longer than 10 characters. The Vikunja API enforces `runelength(0|10)` on the `identifier` field — max 10 characters. The fork (`fectda/vikunja-mcp`) **already has** `identifier` in the Zod schema (commits 5f69770, 69657db), so the original upstream-focused PRD was incorrect.
+
+Two bugs remain:
+
+1. **Missing client-side validation**: The Zod schema accepts identifiers up to 50 chars (`z.string().min(1).max(50)`) but Vikunja rejects > 10 chars with a generic "Invalid Data" error.
+2. **Double-prefix error message**: `handleStatusCodeError(error, 'Failed to update project', id)` combined with `Failed to ${operation}` in `error-handler.ts` produces `Failed to Failed to update project: Invalid Data`.
 
 ---
 
 ## Expected Behavior
 
-When providing a valid project ID and a new `identifier` string to the `projects.update` tool, the MCP should successfully update the project's identifier via the Vikunja API.
+When updating a project identifier, the MCP should:
+- Validate identifier length client-side (max 10 chars) before sending to Vikunja
+- Return a clear error like `"Identifier must be 10 characters or less"` if exceeded
+- Show `Failed to update project: Invalid Data` (not double-prefixed) for other API errors
 
 ## Actual Behavior
 
-The tool fails with `Failed to update project: Invalid Data`. This is the real Vikunja API error now propagated correctly through the fixed error handler. The payload sent to Vikunja is empty/malformed because `identifier` is not in the Zod schema for updates.
-
-The `unsupported_fields` test in `mcp-teams.test.js` also confirms: `project.identifier` is not exposed even though Vikunja natively supports it.
+- Identifier `TEST-ID-123` (12 chars) → `Failed to Failed to update project: Invalid Data`
+- Identifier `FEAT` (4 chars) → works correctly in both MCP and API
 
 ---
 
 ## Steps to Reproduce
 
-1. Call `projects.create` to create a new project. Note the ID.
-2. Call `projects.update` using the noted ID and set `identifier: "NEW-ID"`.
-3. Observe the "Invalid Data" error.
-
-**Test Data**:
-```
-VIKUNJA_URL=http://16.13.0.16:8092/api/v1
-VIKUNJA_API_TOKEN=(valid JWT token)
-```
+1. Call `vikunja_projects` with `{ subcommand: "update", id: <id>, identifier: "12345678901" }` (11 chars)
+2. Observe the double-prefixed error
 
 ---
 
-## Error Logs
+## Root Cause Analysis
+
+### Real API error (confirmed via direct node-vikunja call)
 
 ```
-❌ projects.update (identifier) — MCP response: Failed to update project: Invalid Data
+POST /projects/{id} {title: "...", identifier: "12345678901"}
+→ 412 {"code":2002,"message":"Invalid Data","invalid_fields":[
+    "title: non zero value required",
+    "identifier: 12345678901 does not validate as runelength(0|10)"
+]}
 ```
 
----
+### Two contributing issues:
 
-## Wrapper Context
+1. **Vikunja requires `title` in all updates** — the MCP already handles this correctly (fetches current title if not provided), but the API also rejects identifiers > 10 chars
 
-Our wrapper (`vikunja-mcp-docker`) runs the MCP inside a Docker container:
-- Base: `node:22-alpine`
-- Transport: stdio
-- Auth: JWT
-
-The wrapper DOES NOT modify the MCP logic, it only:
-1. Auto-login JWT via `/api/v1/login` (if credentials exist)
-2. Injects `VIKUNJA_API_TOKEN` as an environment variable
-
-**Verification**: The issue can be reproduced by running the MCP directly (without wrapper).
+2. **Error handler double-prefix** — in `crud.ts`:
+   ```typescript
+   throw handleStatusCodeError(error, 'Failed to update project', id);
+   //                              ^^^^^^^^^^^^^^^^^^^^^  already has "Failed to"
+   ```
+   In `error-handler.ts`:
+   ```typescript
+   return new MCPError(ErrorCode.API_ERROR, `Failed to ${operation}: ${sanitized}`);
+   //                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   //                                            Produces "Failed to Failed to update project: Invalid Data"
+   ```
 
 ---
 
 ## Proposed Solution
 
-Add the `identifier` field to the Zod schema for `projects.update` inside the MCP codebase.
+### Option A: Client-side identifier validation (recommended)
 
-### Option A: Update Zod Schema
+In `src/tools/projects/index.ts`, change the Zod schema to enforce 10-char max:
+
 ```typescript
-identifier: z.string().optional().describe('The project identifier'),
+identifier: z.string().min(1).max(10).optional(),
 ```
+
+This gives the LLM a clear validation error instead of a cryptic API error.
+
+### Option B: Fix error handler double-prefix
+
+In `src/tools/projects/crud.ts`, change:
+```typescript
+throw handleStatusCodeError(error, 'Failed to update project', id);
+```
+to:
+```typescript
+throw handleStatusCodeError(error, 'update project', id);
+```
+
+### Option C: Both (recommended)
+
+Apply both fixes for a complete solution.
 
 ---
 
 ## Impact
 
 - **Affected endpoints**: `vikunja_projects` (subcommand: update)
-- **Affected users**: Users attempting to set human-readable identifiers for projects.
-- **Available workaround**: No direct workaround via MCP. Must use direct API or Web UI.
+- **Affected users**: Users attempting to set identifiers longer than 10 characters
+- **Available workaround**: Use identifiers ≤ 10 characters (e.g., "PROJ-1", "FEAT", "BUGFIX")
 
 ---
 
 ## References
 
-- [Related issue: BUG MCP-5]
-- [Upstream fix `b9cf833`: removed hardcoded customMessage from crud.ts and hierarchy.ts]
+- [Fork commit 5f69770](https://github.com/fectda/vikunja-mcp/commit/5f69770) — added `identifier` to Zod schema
+- [Fork commit 69657db](https://github.com/fectda/vikunja-mcp/commit/69657db) — added `identifier` to Zod schema (duplicate)
+- Vikunja API: `POST /projects/{id}` — `identifier` validates as `runelength(0|10)`
