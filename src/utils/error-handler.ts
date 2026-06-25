@@ -183,6 +183,37 @@ class SecureErrorHandler {
       message = 'Unknown error';
     }
 
+    // Capture full Vikunja response detail for validation errors (400)
+    // Vikunja errors carry `response` with the full API body, which may
+    // include an `errors` map or other context beyond the generic `message`.
+    if (
+      error &&
+      typeof error === 'object' &&
+      'response' in error &&
+      (error as { response: Record<string, unknown> }).response &&
+      typeof (error as { response: Record<string, unknown> }).response === 'object'
+    ) {
+      const resp = (error as { response: Record<string, unknown> }).response;
+      // If the response has fields beyond `message`, append them for debugging
+      const extraKeys = Object.keys(resp).filter((k) => k !== 'message');
+      if (extraKeys.length > 0) {
+        try {
+          const extra = JSON.stringify(
+            extraKeys.reduce(
+              (acc, k) => {
+                acc[k] = resp[k];
+                return acc;
+              },
+              {} as Record<string, unknown>,
+            ),
+          );
+          message += ` — ${extra}`;
+        } catch {
+          // ignore serialization errors
+        }
+      }
+    }
+
     const sanitized = this.sanitize(message);
     return new MCPError(ErrorCode.API_ERROR, `Failed to ${operation}: ${sanitized}`);
   }

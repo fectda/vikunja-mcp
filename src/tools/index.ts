@@ -1,14 +1,15 @@
 /**
  * Tool Registration
- * Registers all Vikunja tools with the MCP server using conditional registration
+ * Registers all Vikunja tools with the MCP server
  *
  * Registration Strategy:
  * - Core tools (auth, tasks): Always registered
  * - Client-dependent tools: Only registered when clientFactory is available
- * - JWT-restricted tools (users, export): Only registered with JWT authentication
  *
- * This approach ensures tool availability matches authentication capabilities
- * and prevents API errors from unsupported token types.
+ * Auth decisions happen per-method at runtime, not at registration time.
+ * This avoids a race condition where auth is established AFTER tool registration
+ * (autoLoginWithCredentials runs async in parallel). Each tool handler validates
+ * auth and returns proper errors if the token type doesn't support the operation.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -72,11 +73,11 @@ export function registerTools(
     // Register batch import tool
     registerBatchImportTool(server, authManager, clientFactory);
 
-    // Register user and export tools conditionally (preserving backward compatibility)
-    // NOTE: The permission infrastructure is available for future migration
-    if (authManager.isAuthenticated() && authManager.getAuthType() === 'jwt') {
-      registerUsersTool(server, authManager, clientFactory);
-      registerExportTool(server, authManager, clientFactory);
-    }
+    // Register all tools unconditionally — auth is decided per-method at runtime.
+    // Conditional registration based on auth type at startup is unreliable because
+    // auth is established AFTER tool registration (async race). Each tool handler
+    // checks auth at runtime and returns proper auth errors.
+    registerUsersTool(server, authManager, clientFactory);
+    registerExportTool(server, authManager, clientFactory);
   }
 }
