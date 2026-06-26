@@ -8,12 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode } from '../types/errors';
-import {
-  clearGlobalClientFactory,
-  getClientFromContext,
-  createVikunjaClientFactory,
-  setGlobalClientFactory,
-} from '../client';
+import { getClientFromContext, cleanupClientFromContext } from '../client';
 import { logger } from '../utils/logger';
 import { applyRateLimiting } from '../middleware/direct-middleware';
 import { createSecureConnectionMessage } from '../utils/security';
@@ -129,10 +124,8 @@ export function registerAuthTool(
               // Update auth manager with new token
               authManager.connect(status.apiUrl, newTokenInfo.token, sessionId);
 
-              // Reinitialize client factory with new token
-              await clearGlobalClientFactory();
-              const newFactory = await createVikunjaClientFactory(authManager);
-              await setGlobalClientFactory(newFactory);
+              // Cleanup only this session's cached client — factory stays alive
+              await cleanupClientFromContext(sessionId);
 
               logger.info('Token refreshed successfully');
 
@@ -159,7 +152,7 @@ export function registerAuthTool(
 
           case 'disconnect': {
             authManager.disconnect(sessionId);
-            await clearGlobalClientFactory();
+            await cleanupClientFromContext(sessionId);
             const response = createStandardResponse(
               'auth-disconnect',
               'Successfully disconnected from Vikunja',
@@ -201,14 +194,13 @@ export function registerAuthTool(
 
               // Disconnect existing session if any
               authManager.disconnect(sessionId);
-              await clearGlobalClientFactory();
+              await cleanupClientFromContext(sessionId);
 
               // Connect with new JWT
               authManager.connect(args.apiUrl, data.token, sessionId);
-
-              // Reinitialize client factory with new token
-              const newFactory = await createVikunjaClientFactory(authManager);
-              await setGlobalClientFactory(newFactory);
+              // No factory recreate needed — cleanupClientFromContext only
+              // removes this session's cached entry; getClient(sessionId)
+              // on next call creates a new client with updated auth data
 
               logger.info('✅ Login successful - JWT obtained');
 

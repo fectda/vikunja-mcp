@@ -90,6 +90,23 @@ class ClientContext {
       release();
     }
   }
+
+  /**
+   * Cleanup cached client for a specific session (thread-safe)
+   * Delegates to factory.cleanup(sessionId) which removes only the
+   * specified session's cached client from the factory map.
+   * Other sessions' cached clients are preserved.
+   */
+  async cleanupClient(sessionId?: string): Promise<void> {
+    const release = await this.factoryMutex.acquire();
+    try {
+      if (this.clientFactory) {
+        this.clientFactory.cleanup(sessionId);
+      }
+    } finally {
+      release();
+    }
+  }
 }
 
 /**
@@ -114,6 +131,18 @@ export async function setGlobalClientFactory(factory: VikunjaClientFactory): Pro
 export async function clearGlobalClientFactory(): Promise<void> {
   const context = await ClientContext.getInstanceAsync();
   await context.clearClientFactory();
+}
+
+/**
+ * Cleanup cached client for a specific session from context (thread-safe)
+ * Removes only the specified session's cached client from the factory.
+ * Other sessions' cached clients are preserved.
+ * If no sessionId provided, cleans up the default session.
+ * Safe to call even if factory is not set (no-op).
+ */
+export async function cleanupClientFromContext(sessionId?: string): Promise<void> {
+  const context = await ClientContext.getInstanceAsync();
+  await context.cleanupClient(sessionId);
 }
 
 export { ClientContext };

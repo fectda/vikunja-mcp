@@ -9,10 +9,11 @@ import { MCPError, ErrorCode } from '../../src/types';
 import type { MockServer, MockAuthManager } from '../types/mocks';
 import { parseMarkdown } from '../utils/markdown';
 
-// Mock the clearGlobalClientFactory function
+// Mock client module — cleanupClientFromContext replaces global factory destroy/recreate
 jest.mock('../../src/client', () => ({
-  clearGlobalClientFactory: jest.fn(),
+  cleanupClientFromContext: jest.fn(),
   getClientFromContext: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
   createVikunjaClientFactory: jest.fn(),
   setGlobalClientFactory: jest.fn(),
 }));
@@ -316,20 +317,15 @@ describe('Auth Tool', () => {
         authType: 'jwt',
       });
 
-      // Mock the client factory and methods
-      const {
-        getClientFromContext,
-        createVikunjaClientFactory,
-        setGlobalClientFactory,
-      } = require('../../src/client');
+      // Mock the client
+      const { getClientFromContext, cleanupClientFromContext } = require('../../src/client');
+      cleanupClientFromContext.mockResolvedValue(undefined);
       const mockClient = {
         auth: {
           renewToken: jest.fn().mockResolvedValue({ token: 'eyJ_new_jwt_token' }),
         },
       };
       getClientFromContext.mockResolvedValue(mockClient);
-      createVikunjaClientFactory.mockResolvedValue({});
-      setGlobalClientFactory.mockResolvedValue(undefined);
 
       const result = await callTool('refresh');
 
@@ -365,11 +361,11 @@ describe('Auth Tool', () => {
 
   describe('disconnect subcommand', () => {
     it('should disconnect and cleanup client', async () => {
-      const { clearGlobalClientFactory } = require('../../src/client');
+      const { cleanupClientFromContext } = require('../../src/client');
       const result = await callTool('disconnect');
 
       expect(mockAuthManager.disconnect).toHaveBeenCalled();
-      expect(clearGlobalClientFactory).toHaveBeenCalled();
+      expect(cleanupClientFromContext).toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);

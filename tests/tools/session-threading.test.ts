@@ -12,6 +12,7 @@ import { AuthManager } from '../../src/auth/AuthManager';
 const mockGetClientFromContext = jest.fn();
 jest.mock('../../src/client', () => ({
   getClientFromContext: (...args: any[]) => mockGetClientFromContext(...args),
+  cleanupClientFromContext: jest.fn(),
   setGlobalClientFactory: jest.fn(),
   clearGlobalClientFactory: jest.fn(),
   createVikunjaClientFactory: jest.fn(),
