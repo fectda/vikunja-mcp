@@ -28,6 +28,8 @@ export interface FilteringParams {
   filterExpression: FilterExpression | null;
   filterString: string | undefined;
   params: GetTasksParams;
+  /** Session ID for multi-session isolation */
+  sessionId?: string;
 }
 
 /**

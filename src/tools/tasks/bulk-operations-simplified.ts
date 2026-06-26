@@ -100,12 +100,13 @@ const successResponse = (
 
 export async function bulkUpdateTasks(
   args: BulkUpdateArgs,
+  sessionId?: string,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     validateBulkUpdate(args);
     // Validation ensures taskIds exists
     const taskIds = args.taskIds ?? [];
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     const updateWithFallback = async (): Promise<{
       content: Array<{ type: 'text'; text: string }>;
@@ -268,12 +269,13 @@ export async function bulkUpdateTasks(
 
 export async function bulkDeleteTasks(
   args: BulkDeleteArgs,
+  sessionId?: string,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     validateBulkDelete(args);
     // Validation ensures taskIds exists
     const taskIds = args.taskIds ?? [];
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     const fetchResult = await processors.delete.processBatches(
       taskIds,
@@ -328,6 +330,7 @@ export async function bulkDeleteTasks(
 
 export async function bulkCreateTasks(
   args: BulkCreateArgs,
+  sessionId?: string,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     validateBulkCreate(args);
@@ -338,7 +341,7 @@ export async function bulkCreateTasks(
   }
 
   try {
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
     // Validation ensures projectId and tasks exist
     const projectId = args.projectId ?? 0;
     const tasks = args.tasks ?? [];

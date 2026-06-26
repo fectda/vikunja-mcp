@@ -150,9 +150,11 @@ export function registerProjectsTool(
       // Session ID for AORP response tracking
       sessionId: z.string().optional(),
     },
-    async (args, context) => {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
+
       // Check authentication with enhanced error message
-      if (!authManager.isAuthenticated()) {
+      if (!authManager.isAuthenticated(sessionId)) {
         throw createAuthRequiredError('access project management features');
       }
 
@@ -167,14 +169,14 @@ export function registerProjectsTool(
           switch (args.subcommand) {
             // CRUD operations
             case 'list':
-              return await listProjects(args as ListProjectsArgs);
+              return await listProjects(args as ListProjectsArgs, sessionId);
 
             case 'get':
               if (args.id === undefined || args.id === null) {
                 throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
               }
               validateId(args.id, 'id');
-              return await getProject(args as GetProjectArgs);
+              return await getProject(args as GetProjectArgs, sessionId);
 
             case 'create':
               if (!args.title) {
@@ -183,7 +185,7 @@ export function registerProjectsTool(
                   'Project title is required for create operation',
                 );
               }
-              return await createProject(args as CreateProjectArgs);
+              return await createProject(args as CreateProjectArgs, sessionId);
 
             case 'update':
               if (!args.id) {
@@ -192,7 +194,7 @@ export function registerProjectsTool(
                   'Project ID is required for update operation',
                 );
               }
-              return await updateProject(args as UpdateProjectArgs);
+              return await updateProject(args as UpdateProjectArgs, sessionId);
 
             case 'delete':
               if (!args.id) {
@@ -201,7 +203,7 @@ export function registerProjectsTool(
                   'Project ID is required for delete operation',
                 );
               }
-              return await deleteProject(args as DeleteProjectArgs);
+              return await deleteProject(args as DeleteProjectArgs, sessionId);
 
             case 'archive':
               if (!args.id) {
@@ -210,7 +212,7 @@ export function registerProjectsTool(
                   'Project ID is required for archive operation',
                 );
               }
-              return await archiveProject(args as ArchiveProjectArgs);
+              return await archiveProject(args as ArchiveProjectArgs, sessionId);
 
             case 'unarchive':
               if (!args.id) {
@@ -219,7 +221,7 @@ export function registerProjectsTool(
                   'Project ID is required for unarchive operation',
                 );
               }
-              return await unarchiveProject(args as ArchiveProjectArgs);
+              return await unarchiveProject(args as ArchiveProjectArgs, sessionId);
 
             // Hierarchy operations
             case 'get-children':
@@ -229,10 +231,10 @@ export function registerProjectsTool(
                   'Project ID is required for get-children operation',
                 );
               }
-              return await getProjectChildren(args as GetChildrenArgs, context);
+              return await getProjectChildren(args as GetChildrenArgs, extra, sessionId);
 
             case 'get-tree':
-              return await getProjectTree(args as GetTreeArgs, context);
+              return await getProjectTree(args as GetTreeArgs, extra, sessionId);
 
             case 'get-breadcrumb':
               if (!args.id) {
@@ -241,7 +243,7 @@ export function registerProjectsTool(
                   'Project ID is required for get-breadcrumb operation',
                 );
               }
-              return await getProjectBreadcrumb(args as GetBreadcrumbArgs, context);
+              return await getProjectBreadcrumb(args as GetBreadcrumbArgs, extra, sessionId);
 
             case 'move':
               if (!args.id) {
@@ -251,7 +253,7 @@ export function registerProjectsTool(
                 );
               }
               validateId(args.id, 'id');
-              return await moveProject(args as MoveProjectArgs, context);
+              return await moveProject(args as MoveProjectArgs, extra, sessionId);
 
             // Sharing operations
             case 'create-share':
@@ -261,13 +263,13 @@ export function registerProjectsTool(
               if (!args.right) {
                 throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share right is required');
               }
-              return await createProjectShare(args as CreateShareArgs);
+              return await createProjectShare(args as CreateShareArgs, sessionId);
 
             case 'list-shares':
               if (!args.projectId) {
                 throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
               }
-              return await listProjectShares(args as ListSharesArgs);
+              return await listProjectShares(args as ListSharesArgs, sessionId);
 
             case 'get-share':
               if (args.shareId === undefined || args.shareId === null) {
@@ -279,7 +281,7 @@ export function registerProjectsTool(
                   'Share ID must be a non-empty string',
                 );
               }
-              return await getProjectShare(args as GetShareArgs);
+              return await getProjectShare(args as GetShareArgs, sessionId);
 
             case 'delete-share':
               if (args.shareId === undefined || args.shareId === null) {
@@ -291,7 +293,7 @@ export function registerProjectsTool(
                   'Share ID must be a non-empty string',
                 );
               }
-              return await deleteProjectShare(args as DeleteShareArgs);
+              return await deleteProjectShare(args as DeleteShareArgs, sessionId);
 
             case 'auth-share': {
               if (!args.shareHash) {
@@ -302,7 +304,7 @@ export function registerProjectsTool(
               };
               if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
               if (args.password !== undefined) authShareArgs.password = args.password;
-              return await authProjectShare(authShareArgs);
+              return await authProjectShare(authShareArgs, sessionId);
             }
 
             // Team sharing operations
@@ -323,6 +325,7 @@ export function registerProjectsTool(
                   right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
                 },
                 authManager,
+                sessionId,
               );
             }
 
@@ -333,7 +336,7 @@ export function registerProjectsTool(
               const listArgs: ListTeamSharesArgs = { projectId: args.projectId };
               if (args.page !== undefined) listArgs.page = args.page;
               if (args.perPage !== undefined) listArgs.perPage = args.perPage;
-              return await listTeamShares(listArgs, authManager);
+              return await listTeamShares(listArgs, authManager, sessionId);
             }
 
             case 'get-team-share': {
@@ -349,6 +352,7 @@ export function registerProjectsTool(
                   teamId: args.teamId,
                 },
                 authManager,
+                sessionId,
               );
             }
 
@@ -369,6 +373,7 @@ export function registerProjectsTool(
                   right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
                 },
                 authManager,
+                sessionId,
               );
             }
 
@@ -385,6 +390,7 @@ export function registerProjectsTool(
                   teamId: args.teamId,
                 },
                 authManager,
+                sessionId,
               );
             }
 
@@ -406,6 +412,7 @@ export function registerProjectsTool(
                   right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
                 },
                 authManager,
+                sessionId,
               );
             }
 
@@ -416,7 +423,7 @@ export function registerProjectsTool(
               const listUserArgs: ListUserSharesArgs = { projectId: args.projectId };
               if (args.page !== undefined) listUserArgs.page = args.page;
               if (args.perPage !== undefined) listUserArgs.perPage = args.perPage;
-              return await listUserShares(listUserArgs, authManager);
+              return await listUserShares(listUserArgs, authManager, sessionId);
             }
 
             case 'get-user-share': {
@@ -432,6 +439,7 @@ export function registerProjectsTool(
                   userId: args.userId,
                 },
                 authManager,
+                sessionId,
               );
             }
 
@@ -452,6 +460,7 @@ export function registerProjectsTool(
                   right: args.right as 'read' | 'write' | 'admin' | 0 | 1 | 2,
                 },
                 authManager,
+                sessionId,
               );
             }
 
@@ -468,6 +477,7 @@ export function registerProjectsTool(
                   userId: args.userId,
                 },
                 authManager,
+                sessionId,
               );
             }
 

@@ -13,18 +13,21 @@ import { logger } from '../../../utils/logger';
 /**
  * Assign users to a task
  */
-export async function assignUsers(args: {
-  id?: number;
-  assignees?: number[];
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function assignUsers(
+  args: {
+    id?: number;
+    assignees?: number[];
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     const { taskId, assigneeIds } = AssigneeValidationService.validateAssignInput(args);
 
     // Perform the assignment operation
-    await AssigneeOperationsService.assignUsersToTask(taskId, assigneeIds);
+    await AssigneeOperationsService.assignUsersToTask(taskId, assigneeIds, sessionId);
 
     // Fetch updated task data
-    const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId);
+    const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId, sessionId);
 
     // Format and return response
     const response = AssigneeResponseFormatter.formatAssignResponse(task);
@@ -61,18 +64,21 @@ export async function assignUsers(args: {
 /**
  * Unassign users from a task
  */
-export async function unassignUsers(args: {
-  id?: number;
-  assignees?: number[];
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function unassignUsers(
+  args: {
+    id?: number;
+    assignees?: number[];
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     const { taskId, userIds } = AssigneeValidationService.validateUnassignInput(args);
 
     // Perform the unassignment operation
-    await AssigneeOperationsService.removeUsersFromTask(taskId, userIds);
+    await AssigneeOperationsService.removeUsersFromTask(taskId, userIds, sessionId);
 
     // Fetch updated task data
-    const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId);
+    const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId, sessionId);
 
     // Format and return response
     const response = AssigneeResponseFormatter.formatUnassignResponse(task);
@@ -109,14 +115,17 @@ export async function unassignUsers(args: {
 /**
  * List assignees of a task
  */
-export async function listAssignees(args: {
-  id?: number;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function listAssignees(
+  args: {
+    id?: number;
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     const { taskId } = AssigneeValidationService.validateListInput(args);
 
     // Fetch task data
-    const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId);
+    const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId, sessionId);
 
     // Create minimal task representation with assignees
     const minimalTask = AssigneeOperationsService.createMinimalTaskWithAssignees(task);

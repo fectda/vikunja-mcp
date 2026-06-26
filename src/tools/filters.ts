@@ -116,12 +116,13 @@ const ValidateFilterSchema = z.object({
  */
 async function getSessionStorage(
   authManager: AuthManager,
+  sessionId?: string,
 ): ReturnType<typeof storageManager.getStorage> {
-  const session = authManager.getSession();
-  const sessionId = session.apiToken
+  const session = authManager.getSession(sessionId);
+  const storageKey = session.apiToken
     ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}`
     : 'anonymous';
-  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+  return storageManager.getStorage(storageKey, session.userId, session.apiUrl);
 }
 
 /**
@@ -141,7 +142,8 @@ export function registerFiltersTool(
       conditions: BuildFilterSchema.shape.conditions.optional(),
       groupOperator: BuildFilterSchema.shape.groupOperator.optional(),
     },
-    async ({ action, parameters, conditions, groupOperator }) => {
+    async ({ action, parameters, conditions, groupOperator }, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
       // Merge top-level build fields into effective params for backward compat
       let effectiveParams: Record<string, unknown> = parameters ?? {};
       if (action === 'build' && conditions) {
@@ -150,7 +152,7 @@ export function registerFiltersTool(
       logger.info(`Executing vikunja_filters action: ${action}`);
 
       try {
-        const storage = await getSessionStorage(authManager);
+        const storage = await getSessionStorage(authManager, sessionId);
         switch (action) {
           case 'list': {
             const params = ListFiltersSchema.parse(effectiveParams);

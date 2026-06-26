@@ -82,6 +82,7 @@ export function normalizeRight(right: 'read' | 'write' | 'admin' | 0 | 1 | 2): n
 export async function shareTeam(
   args: ShareTeamArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, teamId, right } = args;
 
@@ -98,8 +99,8 @@ export async function shareTeam(
     }
 
     const numericRight = normalizeRight(right);
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     // STEP 1: Create share with team_id in body (NOT in URL)
     const createResponse = await fetch(`${session.apiUrl}/projects/${projectId}/teams`, {
@@ -204,6 +205,7 @@ export async function shareTeam(
 export async function listTeamShares(
   args: ListTeamSharesArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, page = 1, perPage = 50 } = args;
 
@@ -212,8 +214,8 @@ export async function listTeamShares(
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID must be a positive integer');
     }
 
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     const queryParams = new URLSearchParams();
     if (page !== 1) queryParams.set('page', String(page));
@@ -279,6 +281,7 @@ export async function listTeamShares(
 export async function getTeamShare(
   args: GetTeamShareArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, teamId } = args;
 
@@ -290,8 +293,8 @@ export async function getTeamShare(
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID must be a positive integer');
     }
 
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     // Vikunja only supports listing all team shares — filter client-side
     const listResponse = await fetch(`${session.apiUrl}/projects/${projectId}/teams`, {
@@ -359,6 +362,7 @@ export async function getTeamShare(
 export async function updateTeamShare(
   args: UpdateTeamShareArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, teamId, right } = args;
 
@@ -374,8 +378,8 @@ export async function updateTeamShare(
     }
 
     const numericRight = normalizeRight(right);
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     // Vikunja API expects NUMBER for permission: 0=read, 1=write, 2=admin
     // Use POST (not PUT) with "permission" field (not "right")
@@ -435,6 +439,7 @@ export async function updateTeamShare(
 export async function removeTeamShare(
   args: RemoveTeamShareArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, teamId } = args;
 
@@ -446,8 +451,8 @@ export async function removeTeamShare(
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID must be a positive integer');
     }
 
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/teams/${teamId}`, {
       method: 'DELETE',

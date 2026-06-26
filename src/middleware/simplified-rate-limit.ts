@@ -98,26 +98,28 @@ const DEFAULT_CONFIG: ToolRateLimits = {
  * Tool categorization for rate limiting (preserved from original implementation)
  */
 export const TOOL_CATEGORIES: Record<string, keyof ToolRateLimits> = {
-  'vikunja_tasks': 'default',
-  'vikunja_projects': 'default',
-  'vikunja_labels': 'default',
-  'vikunja_teams': 'default',
-  'vikunja_users': 'default',
-  'vikunja_auth': 'default',
-  'vikunja_filters': 'default',
-  'vikunja_templates': 'default',
-  'vikunja_webhooks': 'default',
-  'vikunja_batch_import': 'bulk',
-  'vikunja_export': 'export',
-  'vikunja_export_tasks': 'export',
-  'vikunja_export_projects': 'export',
+  vikunja_tasks: 'default',
+  vikunja_projects: 'default',
+  vikunja_labels: 'default',
+  vikunja_teams: 'default',
+  vikunja_users: 'default',
+  vikunja_auth: 'default',
+  vikunja_filters: 'default',
+  vikunja_templates: 'default',
+  vikunja_webhooks: 'default',
+  vikunja_batch_import: 'bulk',
+  vikunja_export: 'export',
+  vikunja_export_tasks: 'export',
+  vikunja_export_projects: 'export',
 };
 
 /**
  * Get session ID for rate limiting (preserved from original implementation)
+ * Supports multi-session isolation by accepting an optional sessionId.
+ * Falls back to process-level tracking when no sessionId is provided.
  */
-function getSessionId(): string {
-  return `session_${process.pid}`;
+function getSessionId(sessionId?: string): string {
+  return sessionId ?? `session_${process.pid}`;
 }
 
 /**
@@ -158,12 +160,12 @@ export class SecureRateLimitMiddleware {
     // SECURITY: Wrap MemoryStore operations in circuit breakers
     this.minuteStoreBreaker = new CircuitBreakerImpl(
       async (key: string) => this.minuteStore.increment(key),
-      CIRCUIT_BREAKER_OPTIONS
+      CIRCUIT_BREAKER_OPTIONS,
     );
 
     this.hourStoreBreaker = new CircuitBreakerImpl(
       async (key: string) => this.hourStore.increment(key),
-      CIRCUIT_BREAKER_OPTIONS
+      CIRCUIT_BREAKER_OPTIONS,
     );
 
     // SECURITY: Circuit breaker event monitoring
@@ -219,7 +221,7 @@ export class SecureRateLimitMiddleware {
    * - Concurrent access protection with mutex
    * - Circuit breaker protection for MemoryStore failures
    */
-  private async checkRateLimit(toolName: string): Promise<void> {
+  private async checkRateLimit(toolName: string, sessionId?: string): Promise<void> {
     const category = TOOL_CATEGORIES[toolName] || 'default';
     const config = this.config[category];
 
@@ -227,8 +229,8 @@ export class SecureRateLimitMiddleware {
       return;
     }
 
-    const sessionId = getSessionId();
-    const minuteKey = `${sessionId}_${category}`;
+    const sid = getSessionId(sessionId);
+    const minuteKey = `${sid}_${category}`;
     const hourKey = `${minuteKey}_hour`;
 
     // SECURITY: Critical section for atomic rate limit checking
@@ -260,7 +262,7 @@ export class SecureRateLimitMiddleware {
             limit: config.requestsPerMinute,
             current: minuteCount,
             resetTime: resetIn,
-          }
+          },
         );
       }
 
@@ -283,7 +285,7 @@ export class SecureRateLimitMiddleware {
             limit: config.requestsPerHour,
             current: hourCount,
             resetTime: resetIn,
-          }
+          },
         );
       }
 
@@ -292,7 +294,6 @@ export class SecureRateLimitMiddleware {
         this.minuteStoreBreaker.fire(minuteKey),
         this.hourStoreBreaker.fire(hourKey),
       ]);
-
     } catch (error) {
       // SECURITY: Handle circuit breaker failures with fail-safe behavior
       if (error instanceof MCPError) {
@@ -335,7 +336,12 @@ export class SecureRateLimitMiddleware {
     try {
       // MemoryStore returns a specific type, let's handle it safely
       const count = await this.minuteStore.get(key);
-      if (count && typeof count === 'object' && 'totalHits' in count && typeof count.totalHits === 'number') {
+      if (
+        count &&
+        typeof count === 'object' &&
+        'totalHits' in count &&
+        typeof count.totalHits === 'number'
+      ) {
         // MemoryStore handles TTL automatically
         return count.totalHits;
       }
@@ -373,7 +379,7 @@ export class SecureRateLimitMiddleware {
         {
           requestSize,
           maxRequestSize: config.maxRequestSize,
-        }
+        },
       );
     }
   }
@@ -402,7 +408,7 @@ export class SecureRateLimitMiddleware {
         {
           responseSize,
           maxResponseSize: config.maxResponseSize,
-        }
+        },
       );
     }
   }
@@ -412,7 +418,7 @@ export class SecureRateLimitMiddleware {
    */
   public withRateLimit<T extends unknown[], R>(
     toolName: string,
-    handler: (...args: T) => Promise<R>
+    handler: (...args: T) => Promise<R>,
   ): (...args: T) => Promise<R> {
     return async (...args: T): Promise<R> => {
       const startTime = Date.now();
@@ -433,14 +439,16 @@ export class SecureRateLimitMiddleware {
           handler(...args),
           new Promise<never>((_, reject) => {
             setTimeout(() => {
-              reject(new MCPError(
-                ErrorCode.TIMEOUT_ERROR,
-                `Tool execution timeout after ${config.executionTimeout}ms`,
-                {
-                  timeout: config.executionTimeout,
-                  toolName,
-                }
-              ));
+              reject(
+                new MCPError(
+                  ErrorCode.TIMEOUT_ERROR,
+                  `Tool execution timeout after ${config.executionTimeout}ms`,
+                  {
+                    timeout: config.executionTimeout,
+                    toolName,
+                  },
+                ),
+              );
             }, config.executionTimeout);
           }),
         ]);
@@ -511,13 +519,19 @@ export class SecureRateLimitMiddleware {
     return {
       sessionId,
       requestsLastMinute: 0, // Cannot provide accurate sync without dual source of truth
-      requestsLastHour: 0,   // Cannot provide accurate sync without dual source of truth
+      requestsLastHour: 0, // Cannot provide accurate sync without dual source of truth
       limits: this.config,
       circuitBreakerStatus: {
-        minuteStore: this.minuteStoreBreaker.opened ? 'open' :
-                    (this.minuteStoreBreaker.halfOpen ? 'half-open' : 'closed'),
-        hourStore: this.hourStoreBreaker.opened ? 'open' :
-                  (this.hourStoreBreaker.halfOpen ? 'half-open' : 'closed'),
+        minuteStore: this.minuteStoreBreaker.opened
+          ? 'open'
+          : this.minuteStoreBreaker.halfOpen
+            ? 'half-open'
+            : 'closed',
+        hourStore: this.hourStoreBreaker.opened
+          ? 'open'
+          : this.hourStoreBreaker.halfOpen
+            ? 'half-open'
+            : 'closed',
       },
     };
   }
@@ -572,10 +586,16 @@ export class SecureRateLimitMiddleware {
       requestsLastHour: totalHourRequests,
       limits: this.config,
       circuitBreakerStatus: {
-        minuteStore: this.minuteStoreBreaker.opened ? 'open' :
-                    (this.minuteStoreBreaker.halfOpen ? 'half-open' : 'closed'),
-        hourStore: this.hourStoreBreaker.opened ? 'open' :
-                  (this.hourStoreBreaker.halfOpen ? 'half-open' : 'closed'),
+        minuteStore: this.minuteStoreBreaker.opened
+          ? 'open'
+          : this.minuteStoreBreaker.halfOpen
+            ? 'half-open'
+            : 'closed',
+        hourStore: this.hourStoreBreaker.opened
+          ? 'open'
+          : this.hourStoreBreaker.halfOpen
+            ? 'half-open'
+            : 'closed',
       },
     };
   }
@@ -586,10 +606,7 @@ export class SecureRateLimitMiddleware {
   public async clearSession(_sessionId?: string): Promise<void> {
     try {
       // SECURITY: Clear MemoryStore data
-      await Promise.all([
-        this.minuteStore.resetAll(),
-        this.hourStore.resetAll(),
-      ]);
+      await Promise.all([this.minuteStore.resetAll(), this.hourStore.resetAll()]);
 
       // SECURITY: Reset circuit breakers to clean state
       this.minuteStoreBreaker.close();
@@ -611,10 +628,7 @@ export class SecureRateLimitMiddleware {
    */
   public async clearAll(): Promise<void> {
     try {
-      await Promise.all([
-        this.minuteStore.resetAll(),
-        this.hourStore.resetAll(),
-      ]);
+      await Promise.all([this.minuteStore.resetAll(), this.hourStore.resetAll()]);
 
       // Reset circuit breakers
       this.minuteStoreBreaker.close();
@@ -659,7 +673,7 @@ export const SimplifiedRateLimitMiddleware = SecureRateLimitMiddleware;
  */
 export function withRateLimit<T extends unknown[], R>(
   toolName: string,
-  handler: (...args: T) => Promise<R>
+  handler: (...args: T) => Promise<R>,
 ): (...args: T) => Promise<R> {
   return secureRateLimitMiddleware.withRateLimit(toolName, handler);
 }

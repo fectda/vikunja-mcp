@@ -30,12 +30,13 @@ import { applyLabels, removeLabels, listTaskLabels } from './labels';
  */
 async function getSessionStorage(
   authManager: AuthManager,
+  sessionId?: string,
 ): ReturnType<typeof storageManager.getStorage> {
-  const session = authManager.getSession();
-  const sessionId = session.apiToken
+  const session = authManager.getSession(sessionId);
+  const storageKey = session.apiToken
     ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}`
     : 'anonymous';
-  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+  return storageManager.getStorage(storageKey, session.userId, session.apiUrl);
 }
 
 /**
@@ -44,10 +45,15 @@ async function getSessionStorage(
 async function listTasks(
   args: TaskListingArgs,
   storage: Awaited<ReturnType<typeof storageManager.getStorage>>,
+  sessionId?: string,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     // Execute the complete filtering workflow using the orchestrator
-    const filteringResult = await TaskFilteringOrchestrator.executeTaskFiltering(args, storage);
+    const filteringResult = await TaskFilteringOrchestrator.executeTaskFiltering(
+      args,
+      storage,
+      sessionId,
+    );
 
     // Determine filtering method message
     let filteringMessage = '';
@@ -116,6 +122,7 @@ async function handleAttach(
     fileUrl?: string; // alternative: URL to download file from
   },
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   const { id, fileContent, fileName, fileUrl } = args;
 
@@ -130,7 +137,7 @@ async function handleAttach(
     );
   }
 
-  const session = authManager.getSession();
+  const session = authManager.getSession(sessionId);
 
   let fileData: ArrayBuffer | null = null;
   let finalFileName = fileName || 'attachment';
@@ -308,12 +315,13 @@ export function registerTasksTool(
       // Session ID for AORP response tracking
       sessionId: z.string().optional(),
     },
-    async (args) => {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
       try {
         logger.debug('Executing tasks tool', { subcommand: args.subcommand, args });
 
         // Check authentication with enhanced error message
-        if (!authManager.isAuthenticated()) {
+        if (!authManager.isAuthenticated(sessionId)) {
           throw createAuthRequiredError('access task management features');
         }
 
@@ -323,38 +331,38 @@ export function registerTasksTool(
         }
 
         // Test client connection
-        await getClientFromContext();
+        await getClientFromContext(sessionId);
 
         switch (args.subcommand) {
           case 'list': {
             // Get session-scoped storage for filter operations (only when needed)
-            const storage = await getSessionStorage(authManager);
-            return listTasks(args as Parameters<typeof listTasks>[0], storage);
+            const storage = await getSessionStorage(authManager, sessionId);
+            return listTasks(args as Parameters<typeof listTasks>[0], storage, sessionId);
           }
 
           case 'create':
-            return createTask(args as Parameters<typeof createTask>[0]);
+            return createTask({ ...args, sessionId } as Parameters<typeof createTask>[0]);
 
           case 'get':
-            return getTask(args as Parameters<typeof getTask>[0]);
+            return getTask({ ...args, sessionId } as Parameters<typeof getTask>[0]);
 
           case 'update':
-            return updateTask(args as Parameters<typeof updateTask>[0]);
+            return updateTask({ ...args, sessionId } as Parameters<typeof updateTask>[0]);
 
           case 'delete':
-            return deleteTask(args as Parameters<typeof deleteTask>[0]);
+            return deleteTask({ ...args, sessionId } as Parameters<typeof deleteTask>[0]);
 
           case 'assign':
-            return assignUsers(args as Parameters<typeof assignUsers>[0]);
+            return assignUsers(args as Parameters<typeof assignUsers>[0], sessionId);
 
           case 'unassign':
-            return unassignUsers(args as Parameters<typeof unassignUsers>[0]);
+            return unassignUsers(args as Parameters<typeof unassignUsers>[0], sessionId);
 
           case 'list-assignees':
-            return listAssignees(args as Parameters<typeof listAssignees>[0]);
+            return listAssignees(args as Parameters<typeof listAssignees>[0], sessionId);
 
           case 'comment':
-            return handleComment(args as Parameters<typeof handleComment>[0]);
+            return handleComment(args as Parameters<typeof handleComment>[0], sessionId);
 
           case 'attach':
             return handleAttach(
@@ -365,45 +373,49 @@ export function registerTasksTool(
                 fileUrl?: string;
               },
               authManager,
+              sessionId,
             );
 
           case 'bulk-update':
-            return bulkUpdateTasks(args as Parameters<typeof bulkUpdateTasks>[0]);
+            return bulkUpdateTasks(args as Parameters<typeof bulkUpdateTasks>[0], sessionId);
 
           case 'bulk-delete':
-            return bulkDeleteTasks(args as Parameters<typeof bulkDeleteTasks>[0]);
+            return bulkDeleteTasks(args as Parameters<typeof bulkDeleteTasks>[0], sessionId);
 
           case 'bulk-create':
-            return bulkCreateTasks(args as Parameters<typeof bulkCreateTasks>[0]);
+            return bulkCreateTasks(args as Parameters<typeof bulkCreateTasks>[0], sessionId);
 
           // Handle relation subcommands
           case 'relate':
           case 'unrelate':
           case 'relations':
-            return handleRelationSubcommands({
-              subcommand: args.subcommand,
-              id: args.id,
-              otherTaskId: args.otherTaskId,
-              relationKind: args.relationKind,
-            });
+            return handleRelationSubcommands(
+              {
+                subcommand: args.subcommand,
+                id: args.id,
+                otherTaskId: args.otherTaskId,
+                relationKind: args.relationKind,
+              },
+              sessionId,
+            );
 
           // Handle reminder operations
           case 'add-reminder':
-            return addReminder(args as Parameters<typeof addReminder>[0]);
+            return addReminder(args as Parameters<typeof addReminder>[0], sessionId);
 
           case 'remove-reminder':
-            return removeReminder(args as Parameters<typeof removeReminder>[0]);
+            return removeReminder(args as Parameters<typeof removeReminder>[0], sessionId);
 
           case 'list-reminders':
-            return listReminders(args as Parameters<typeof listReminders>[0]);
+            return listReminders(args as Parameters<typeof listReminders>[0], sessionId);
           case 'apply-label':
-            return applyLabels(args as Parameters<typeof applyLabels>[0]);
+            return applyLabels(args as Parameters<typeof applyLabels>[0], sessionId);
 
           case 'remove-label':
-            return removeLabels(args as Parameters<typeof removeLabels>[0]);
+            return removeLabels(args as Parameters<typeof removeLabels>[0], sessionId);
 
           case 'list-labels':
-            return listTaskLabels(args as Parameters<typeof listTaskLabels>[0]);
+            return listTaskLabels(args as Parameters<typeof listTaskLabels>[0], sessionId);
 
           default:
             throw new MCPError(

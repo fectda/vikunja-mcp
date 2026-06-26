@@ -11,10 +11,13 @@ import { formatAorpAsMarkdown, createAorpFromData } from '../../utils/response-f
 /**
  * Add a reminder to a task
  */
-export async function addReminder(args: {
-  id?: number;
-  reminderDate?: string;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function addReminder(
+  args: {
+    id?: number;
+    reminderDate?: string;
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
       throw new MCPError(
@@ -32,7 +35,7 @@ export async function addReminder(args: {
     }
     validateDateString(args.reminderDate, 'reminderDate');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get current task to preserve existing reminders
     const currentTask = await client.tasks.getTask(args.id);
@@ -67,7 +70,7 @@ export async function addReminder(args: {
       'add-reminder',
       `Reminder added successfully for ${args.reminderDate}`,
       true,
-      `Reminder added successfully for ${args.reminderDate}`
+      `Reminder added successfully for ${args.reminderDate}`,
     );
 
     return {
@@ -92,10 +95,13 @@ export async function addReminder(args: {
 /**
  * Remove a reminder from a task
  */
-export async function removeReminder(args: {
-  id?: number;
-  reminderId?: number;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function removeReminder(
+  args: {
+    id?: number;
+    reminderId?: number;
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
       throw new MCPError(
@@ -113,7 +119,7 @@ export async function removeReminder(args: {
     }
     validateId(args.reminderId, 'reminderId');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get current task
     const currentTask = await client.tasks.getTask(args.id);
@@ -148,7 +154,7 @@ export async function removeReminder(args: {
       'remove-reminder',
       `Reminder ${args.reminderId} removed successfully`,
       true,
-      `Reminder ${args.reminderId} removed successfully`
+      `Reminder ${args.reminderId} removed successfully`,
     );
 
     return {
@@ -173,9 +179,12 @@ export async function removeReminder(args: {
 /**
  * List all reminders for a task
  */
-export async function listReminders(args: {
-  id?: number;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function listReminders(
+  args: {
+    id?: number;
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
       throw new MCPError(
@@ -185,7 +194,7 @@ export async function listReminders(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get task with reminders
     const task = await client.tasks.getTask(args.id);
@@ -196,7 +205,7 @@ export async function listReminders(args: {
       'list-reminders',
       `Found ${reminders.length} reminder(s) for task "${task.title}"`,
       true,
-      `Found ${reminders.length} reminder(s) for task "${task.title}"`
+      `Found ${reminders.length} reminder(s) for task "${task.title}"`,
     );
 
     return {

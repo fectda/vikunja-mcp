@@ -55,6 +55,7 @@ export type RemoveUserShareArgs = {
 export async function shareUser(
   args: ShareUserArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, userId, right } = args;
 
@@ -71,8 +72,8 @@ export async function shareUser(
     }
 
     const numericRight = normalizeRight(right);
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/users/${userId}`, {
       method: 'PUT',
@@ -143,6 +144,7 @@ export async function shareUser(
 export async function listUserShares(
   args: ListUserSharesArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, page = 1, perPage = 50 } = args;
 
@@ -151,8 +153,8 @@ export async function listUserShares(
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID must be a positive integer');
     }
 
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     const queryParams = new URLSearchParams();
     if (page !== 1) queryParams.set('page', String(page));
@@ -219,6 +221,7 @@ export async function listUserShares(
 export async function getUserShare(
   args: GetUserShareArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, userId } = args;
 
@@ -230,8 +233,8 @@ export async function getUserShare(
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID must be a positive integer');
     }
 
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/users/${userId}`, {
       method: 'GET',
@@ -295,6 +298,7 @@ export async function getUserShare(
 export async function updateUserShare(
   args: UpdateUserShareArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, userId, right } = args;
 
@@ -310,8 +314,8 @@ export async function updateUserShare(
     }
 
     const numericRight = normalizeRight(right);
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     // Step 1: Verify the share exists
     const checkResponse = await fetch(`${session.apiUrl}/projects/${projectId}/users/${userId}`, {
@@ -388,6 +392,7 @@ export async function updateUserShare(
 export async function removeUserShare(
   args: RemoveUserShareArgs,
   authManager: AuthManager,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { projectId, userId } = args;
 
@@ -399,8 +404,8 @@ export async function removeUserShare(
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID must be a positive integer');
     }
 
-    await getClientFromContext();
-    const session = authManager.getSession();
+    await getClientFromContext(sessionId);
+    const session = authManager.getSession(sessionId);
 
     const response = await fetch(`${session.apiUrl}/projects/${projectId}/users/${userId}`, {
       method: 'DELETE',

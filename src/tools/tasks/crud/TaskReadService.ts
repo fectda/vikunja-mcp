@@ -3,7 +3,14 @@
  * Handles task retrieval operations with comprehensive error handling
  */
 
-import { MCPError, ErrorCode, getClientFromContext, transformApiError, handleFetchError, handleStatusCodeError } from '../../../index';
+import {
+  MCPError,
+  ErrorCode,
+  getClientFromContext,
+  transformApiError,
+  handleFetchError,
+  handleStatusCodeError,
+} from '../../../index';
 import { validateId } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
@@ -16,14 +23,16 @@ export interface GetTaskArgs {
 /**
  * Retrieves a task by ID with comprehensive error handling
  */
-export async function getTask(args: GetTaskArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function getTask(
+  args: GetTaskArgs,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task id is required for get operation');
     }
     validateId(args.id, 'id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(args.sessionId);
     const task = await client.tasks.getTask(args.id);
 
     const response = createTaskResponse(
@@ -38,7 +47,7 @@ export async function getTask(args: GetTaskArgs): Promise<{ content: Array<{ typ
       undefined, // useOptimizedFormat (ignored)
       undefined, // useAorp (ignored)
       undefined, // aorpConfig (using auto-generated)
-      args.sessionId
+      args.sessionId,
     );
 
     return {
@@ -56,11 +65,12 @@ export async function getTask(args: GetTaskArgs): Promise<{ content: Array<{ typ
     }
 
     // Handle fetch/connection errors with helpful guidance
-    if (error instanceof Error && (
-      error.message.includes('fetch failed') ||
-      error.message.includes('ECONNREFUSED') ||
-      error.message.includes('ENOTFOUND')
-    )) {
+    if (
+      error instanceof Error &&
+      (error.message.includes('fetch failed') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ENOTFOUND'))
+    ) {
       throw handleFetchError(error, 'get task');
     }
 

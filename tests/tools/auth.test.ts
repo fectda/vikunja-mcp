@@ -100,6 +100,7 @@ describe('Auth Tool', () => {
       expect(mockAuthManager.connect).toHaveBeenCalledWith(
         'https://vikunja.example.com',
         'tk_test-token-123',
+        undefined,
       );
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
@@ -200,7 +201,11 @@ describe('Auth Tool', () => {
         apiToken: jwtToken,
       });
 
-      expect(mockAuthManager.connect).toHaveBeenCalledWith('https://vikunja.example.com', jwtToken);
+      expect(mockAuthManager.connect).toHaveBeenCalledWith(
+        'https://vikunja.example.com',
+        jwtToken,
+        undefined,
+      );
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
@@ -225,6 +230,7 @@ describe('Auth Tool', () => {
       expect(mockAuthManager.connect).toHaveBeenCalledWith(
         'https://vikunja.example.com',
         'tk_test-token-123',
+        undefined,
       );
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
@@ -500,6 +506,7 @@ describe('Auth Tool', () => {
       expect(mockAuthManager.connect).toHaveBeenCalledWith(
         'https://vikunja.example.com',
         'tk_test-token-123',
+        undefined,
       );
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;

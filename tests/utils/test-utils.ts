@@ -29,11 +29,19 @@ export function createTestableAuthManager(credentials?: string): TestableAuthMan
   // Access private methods through type casting for testing
   const testableAuth = authManager as any;
 
+  /**
+   * Resolve the session ID, defaulting to 'default'
+   */
+  function resolveId(sessionId?: string): string {
+    return sessionId || 'default';
+  }
+
   // Add testing API methods to the instance
-  testableAuth.setTestUserId = function (userId: string): void {
+  testableAuth.setTestUserId = function (userId: string, sessionId?: string): void {
     const { MCPError, ErrorCode } = require('../../src/types');
 
-    if (!this.session) {
+    const session = this.sessions?.get(resolveId(sessionId));
+    if (!session) {
       throw new MCPError(
         ErrorCode.AUTH_REQUIRED,
         'Authentication required. Please use vikunja_auth.connect first.',
@@ -41,13 +49,14 @@ export function createTestableAuthManager(credentials?: string): TestableAuthMan
     }
 
     // Directly set userId for testing
-    this.session.userId = userId;
+    session.userId = userId;
   };
 
-  testableAuth.setTestTokenExpiry = function (expiry: Date): void {
+  testableAuth.setTestTokenExpiry = function (expiry: Date, sessionId?: string): void {
     const { MCPError, ErrorCode } = require('../../src/types');
 
-    if (!this.session) {
+    const session = this.sessions?.get(resolveId(sessionId));
+    if (!session) {
       throw new MCPError(
         ErrorCode.AUTH_REQUIRED,
         'Authentication required. Please use vikunja_auth.connect first.',
@@ -55,42 +64,48 @@ export function createTestableAuthManager(credentials?: string): TestableAuthMan
     }
 
     // Directly set token expiry for testing
-    this.session.tokenExpiry = expiry;
+    session.tokenExpiry = expiry;
   };
 
-  testableAuth.getTestUserId = function (): string | undefined {
+  testableAuth.getTestUserId = function (sessionId?: string): string | undefined {
     const { MCPError, ErrorCode } = require('../../src/types');
 
-    if (!this.session) {
+    const session = this.sessions?.get(resolveId(sessionId));
+    if (!session) {
       throw new MCPError(
         ErrorCode.AUTH_REQUIRED,
         'Authentication required. Please use vikunja_auth.connect first.',
       );
     }
 
-    return this.session.userId;
+    return session.userId;
   };
 
-  testableAuth.getTestTokenExpiry = function (): Date | undefined {
+  testableAuth.getTestTokenExpiry = function (sessionId?: string): Date | undefined {
     const { MCPError, ErrorCode } = require('../../src/types');
 
-    if (!this.session) {
+    const session = this.sessions?.get(resolveId(sessionId));
+    if (!session) {
       throw new MCPError(
         ErrorCode.AUTH_REQUIRED,
         'Authentication required. Please use vikunja_auth.connect first.',
       );
     }
 
-    return this.session.tokenExpiry;
+    return session.tokenExpiry;
   };
 
-  testableAuth.updateSessionProperty = function (properties: {
-    userId?: string;
-    tokenExpiry?: Date;
-  }): void {
+  testableAuth.updateSessionProperty = function (
+    properties: {
+      userId?: string;
+      tokenExpiry?: Date;
+    },
+    sessionId?: string,
+  ): void {
     const { MCPError, ErrorCode } = require('../../src/types');
 
-    if (!this.session) {
+    const session = this.sessions?.get(resolveId(sessionId));
+    if (!session) {
       throw new MCPError(
         ErrorCode.AUTH_REQUIRED,
         'Authentication required. Please use vikunja_auth.connect first.',
@@ -108,7 +123,7 @@ export function createTestableAuthManager(credentials?: string): TestableAuthMan
     }
 
     // Update valid properties
-    Object.assign(this.session, properties);
+    Object.assign(session, properties);
   };
 
   return testableAuth;

@@ -19,8 +19,12 @@ export const AssigneeOperationsService = {
    * Individual calls work reliably with JWT auth, unlike the bulk endpoint.
    * The bulk endpoint (`bulkAssignUsersToTask`) doesn't persist with JWT.
    */
-  async assignUsersToTask(taskId: number, assigneeIds: number[]): Promise<void> {
-    const client = await getClientFromContext();
+  async assignUsersToTask(
+    taskId: number,
+    assigneeIds: number[],
+    sessionId?: string,
+  ): Promise<void> {
+    const client = await getClientFromContext(sessionId);
 
     // Use individual assignUserToTask calls instead of bulk endpoint
     // The bulk endpoint doesn't persist with JWT - this is a known Vikunja issue
@@ -64,8 +68,8 @@ export const AssigneeOperationsService = {
   /**
    * Remove multiple users from a task
    */
-  async removeUsersFromTask(taskId: number, userIds: number[]): Promise<void> {
-    const client = await getClientFromContext();
+  async removeUsersFromTask(taskId: number, userIds: number[], sessionId?: string): Promise<void> {
+    const client = await getClientFromContext(sessionId);
 
     // Remove users from the task with retry logic
     for (const userId of userIds) {
@@ -90,8 +94,8 @@ export const AssigneeOperationsService = {
   /**
    * Fetch task data to get current assignees
    */
-  async fetchTaskWithAssignees(taskId: number): Promise<TaskWithAssignees> {
-    const client = await getClientFromContext();
+  async fetchTaskWithAssignees(taskId: number, sessionId?: string): Promise<TaskWithAssignees> {
+    const client = await getClientFromContext(sessionId);
     const task = await client.tasks.getTask(taskId);
     // Ensure required properties exist for TaskWithAssignees
     if (!task.id) {

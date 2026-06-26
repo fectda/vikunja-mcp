@@ -35,7 +35,8 @@ export function registerBatchImportTool(
       skipErrors: z.boolean().optional(),
       dryRun: z.boolean().optional(),
     },
-    async (args) => {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
       try {
         logger.debug('Executing batch import', {
           projectId: args.projectId,
@@ -45,14 +46,14 @@ export function registerBatchImportTool(
         });
 
         // Authentication check
-        if (!authManager.isAuthenticated()) {
+        if (!authManager.isAuthenticated(sessionId)) {
           throw new MCPError(
             ErrorCode.AUTH_REQUIRED,
             'Authentication required. Please use vikunja_auth.connect first.',
           );
         }
 
-        const client = await getClientFromContext();
+        const client = await getClientFromContext(sessionId);
         const responseFormatter = new BatchImportResponseFormatter();
 
         // Parse input data

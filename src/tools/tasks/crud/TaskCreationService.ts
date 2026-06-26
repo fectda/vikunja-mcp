@@ -94,7 +94,7 @@ export async function createTask(
       }
     }
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(args.sessionId);
 
     // Build the initial task object with sanitized values
     const newTask: Task = {

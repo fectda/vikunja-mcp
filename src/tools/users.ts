@@ -116,8 +116,9 @@ export function registerUsersTool(
       overdueTasksRemindersEnabled: z.boolean().optional(),
       overdueTasksRemindersTime: z.string().optional(),
     },
-    async (args) => {
-      if (!authManager.isAuthenticated()) {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
+      if (!authManager.isAuthenticated(sessionId)) {
         throw new MCPError(
           ErrorCode.AUTH_REQUIRED,
           'Authentication required. Please use vikunja_auth.connect first.',
@@ -125,14 +126,14 @@ export function registerUsersTool(
       }
 
       // User operations require JWT authentication
-      if (authManager.getAuthType() !== 'jwt') {
+      if (authManager.getAuthType(sessionId) !== 'jwt') {
         throw new MCPError(
           ErrorCode.PERMISSION_DENIED,
           'User operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
         );
       }
 
-      const client = await getClientFromContext();
+      const client = await getClientFromContext(sessionId);
 
       try {
         const subcommand = args.subcommand;

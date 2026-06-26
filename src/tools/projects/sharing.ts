@@ -84,7 +84,10 @@ export interface AuthShareArgs {
 /**
  * Creates a new link share for a project
  */
-export async function createProjectShare(args: CreateShareArgs): Promise<McpResponse> {
+export async function createProjectShare(
+  args: CreateShareArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const {
     projectId,
     right,
@@ -128,7 +131,7 @@ export async function createProjectShare(args: CreateShareArgs): Promise<McpResp
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share right must be a string or number');
     }
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Verify the project exists
     await client.projects.getProject(projectId);
@@ -204,13 +207,16 @@ export async function createProjectShare(args: CreateShareArgs): Promise<McpResp
 /**
  * Lists all link shares for a project
  */
-export async function listProjectShares(args: ListSharesArgs): Promise<McpResponse> {
+export async function listProjectShares(
+  args: ListSharesArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { projectId, page = 1, perPage = 50, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(projectId, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Verify the project exists
     await client.projects.getProject(projectId);
@@ -268,7 +274,10 @@ export async function listProjectShares(args: ListSharesArgs): Promise<McpRespon
  * Vikunja API does not expose GET /projects/{id}/shares/{shareId}.
  * We list all shares and filter client-side.
  */
-export async function getProjectShare(args: GetShareArgs): Promise<McpResponse> {
+export async function getProjectShare(
+  args: GetShareArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { shareId, projectId, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -280,7 +289,7 @@ export async function getProjectShare(args: GetShareArgs): Promise<McpResponse> 
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
     }
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Vikunja only supports listing all shares — filter client-side
     const shares = await client.projects.getLinkShares(projectId, {});
@@ -326,7 +335,10 @@ export async function getProjectShare(args: GetShareArgs): Promise<McpResponse> 
 /**
  * Deletes a link share
  */
-export async function deleteProjectShare(args: DeleteShareArgs): Promise<McpResponse> {
+export async function deleteProjectShare(
+  args: DeleteShareArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { shareId, projectId, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -338,7 +350,7 @@ export async function deleteProjectShare(args: DeleteShareArgs): Promise<McpResp
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
     }
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // NOTE: No pre-flight GET — Vikunja does not expose GET /projects/{id}/shares/{shareId}.
     // DELETE returns 204 on success or 404 if not found.
@@ -389,7 +401,10 @@ export async function deleteProjectShare(args: DeleteShareArgs): Promise<McpResp
 /**
  * Authenticates access to a shared project
  */
-export async function authProjectShare(args: AuthShareArgs): Promise<McpResponse> {
+export async function authProjectShare(
+  args: AuthShareArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { shareHash, password, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
@@ -397,7 +412,7 @@ export async function authProjectShare(args: AuthShareArgs): Promise<McpResponse
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share hash must be a non-empty string');
     }
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // The authentication is done via the shares API
     const authResult = await client.shares.getShareAuth(shareHash, {

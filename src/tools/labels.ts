@@ -45,15 +45,16 @@ export function registerLabelsTool(
         .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color format')
         .optional(),
     },
-    async (args) => {
-      if (!authManager.isAuthenticated()) {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
+      if (!authManager.isAuthenticated(sessionId)) {
         throw new MCPError(
           ErrorCode.AUTH_REQUIRED,
           'Authentication required. Please use vikunja_auth.connect first.',
         );
       }
 
-      const client = (await getClientFromContext()) as TypedVikunjaClient;
+      const client = (await getClientFromContext(sessionId)) as TypedVikunjaClient;
 
       const subcommand = args.subcommand;
 

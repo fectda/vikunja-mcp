@@ -112,7 +112,10 @@ export interface ArchiveProjectArgs {
 /**
  * Lists projects with pagination and filtering
  */
-export async function listProjects(args: ListProjectsArgs): Promise<McpResponse> {
+export async function listProjects(
+  args: ListProjectsArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const {
     page = 1,
     perPage = 50,
@@ -124,7 +127,7 @@ export async function listProjects(args: ListProjectsArgs): Promise<McpResponse>
   } = args;
 
   try {
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Build params object, only including defined properties to satisfy exactOptionalPropertyTypes
     const params: ProjectListParams = {
@@ -188,13 +191,13 @@ export async function listProjects(args: ListProjectsArgs): Promise<McpResponse>
 /**
  * Gets a single project by ID
  */
-export async function getProject(args: GetProjectArgs): Promise<McpResponse> {
+export async function getProject(args: GetProjectArgs, sessionId?: string): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
     const project = await client.projects.getProject(id);
 
     const result = createProjectResponse(
@@ -226,7 +229,10 @@ export async function getProject(args: GetProjectArgs): Promise<McpResponse> {
 /**
  * Creates a new project
  */
-export async function createProject(args: CreateProjectArgs): Promise<McpResponse> {
+export async function createProject(
+  args: CreateProjectArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const {
     title,
     description,
@@ -257,7 +263,7 @@ export async function createProject(args: CreateProjectArgs): Promise<McpRespons
 
     validateProjectData(validationData);
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get all projects to validate hierarchy if parent is specified
     let allProjects: Project[] = [];
@@ -346,7 +352,10 @@ export async function createProject(args: CreateProjectArgs): Promise<McpRespons
 /**
  * Updates an existing project
  */
-export async function updateProject(args: UpdateProjectArgs): Promise<McpResponse> {
+export async function updateProject(
+  args: UpdateProjectArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const {
     id,
     title,
@@ -386,7 +395,7 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Identifier must not exceed 10 characters');
     }
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get current project
     const currentProject = await client.projects.getProject(id);
@@ -497,13 +506,16 @@ export async function updateProject(args: UpdateProjectArgs): Promise<McpRespons
 /**
  * Deletes a project
  */
-export async function deleteProject(args: DeleteProjectArgs): Promise<McpResponse> {
+export async function deleteProject(
+  args: DeleteProjectArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get project details before deletion
     const project = await client.projects.getProject(id);
@@ -539,13 +551,16 @@ export async function deleteProject(args: DeleteProjectArgs): Promise<McpRespons
 /**
  * Archives a project
  */
-export async function archiveProject(args: ArchiveProjectArgs): Promise<McpResponse> {
+export async function archiveProject(
+  args: ArchiveProjectArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get current project first
     const currentProject = await client.projects.getProject(id);
@@ -607,13 +622,16 @@ export async function archiveProject(args: ArchiveProjectArgs): Promise<McpRespo
 /**
  * Unarchives a project
  */
-export async function unarchiveProject(args: ArchiveProjectArgs): Promise<McpResponse> {
+export async function unarchiveProject(
+  args: ArchiveProjectArgs,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get current project first
     const currentProject = await client.projects.getProject(id);

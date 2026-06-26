@@ -44,7 +44,8 @@ export function registerAuthTool(
       username: z.string().optional(),
       password: z.string().optional(),
     },
-    applyRateLimiting('vikunja_auth', async (args: AuthArgs) => {
+    applyRateLimiting('vikunja_auth', async (args: AuthArgs, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
       try {
         switch (args.subcommand) {
           case 'connect': {
@@ -59,7 +60,7 @@ export function registerAuthTool(
             logger.debug('Auth connect attempt: %s', secureMessage);
 
             // Check if already authenticated
-            const currentStatus = authManager.getStatus();
+            const currentStatus = authManager.getStatus(sessionId);
             if (currentStatus.authenticated && currentStatus.apiUrl === args.apiUrl) {
               const response = createStandardResponse(
                 'auth-connect',
@@ -74,15 +75,15 @@ export function registerAuthTool(
 
             // Auto-detect auth type will be handled by AuthManager
             logger.info('Attempting to connect to Vikunja');
-            authManager.connect(args.apiUrl, args.apiToken);
-            const detectedAuthType = authManager.getAuthType();
+            authManager.connect(args.apiUrl, args.apiToken, sessionId);
+            const detectedAuthType = authManager.getAuthType(sessionId);
             logger.info('Successfully connected to Vikunja - authType: %s', detectedAuthType);
 
             const response = createStandardResponse(
               'auth-connect',
               'Successfully connected to Vikunja',
               { authenticated: true },
-              { apiUrl: args.apiUrl, authType: authManager.getAuthType() },
+              { apiUrl: args.apiUrl, authType: authManager.getAuthType(sessionId) },
             );
             return {
               content: formatMcpResponse(response),
@@ -90,7 +91,7 @@ export function registerAuthTool(
           }
 
           case 'status': {
-            const status = authManager.getStatus();
+            const status = authManager.getStatus(sessionId);
             const response = createStandardResponse(
               'auth-status',
               status.authenticated ? 'Authentication status retrieved' : 'Not authenticated',
@@ -104,7 +105,7 @@ export function registerAuthTool(
 
           case 'refresh': {
             // JWT tokens expire (~24h), so we need to refresh them
-            const status = authManager.getStatus();
+            const status = authManager.getStatus(sessionId);
             if (!status.authenticated) {
               throw new MCPError(ErrorCode.AUTH_REQUIRED, 'Not authenticated. Connect first.');
             }
@@ -118,7 +119,7 @@ export function registerAuthTool(
             }
 
             try {
-              const client = await getClientFromContext();
+              const client = await getClientFromContext(sessionId);
               const newTokenInfo = await client.auth.renewToken();
 
               if (!newTokenInfo.token || !status.apiUrl) {
@@ -126,7 +127,7 @@ export function registerAuthTool(
               }
 
               // Update auth manager with new token
-              authManager.connect(status.apiUrl, newTokenInfo.token);
+              authManager.connect(status.apiUrl, newTokenInfo.token, sessionId);
 
               // Reinitialize client factory with new token
               await clearGlobalClientFactory();
@@ -157,7 +158,7 @@ export function registerAuthTool(
           }
 
           case 'disconnect': {
-            authManager.disconnect();
+            authManager.disconnect(sessionId);
             await clearGlobalClientFactory();
             const response = createStandardResponse(
               'auth-disconnect',
@@ -199,11 +200,11 @@ export function registerAuthTool(
               }
 
               // Disconnect existing session if any
-              authManager.disconnect();
+              authManager.disconnect(sessionId);
               await clearGlobalClientFactory();
 
               // Connect with new JWT
-              authManager.connect(args.apiUrl, data.token);
+              authManager.connect(args.apiUrl, data.token, sessionId);
 
               // Reinitialize client factory with new token
               const newFactory = await createVikunjaClientFactory(authManager);

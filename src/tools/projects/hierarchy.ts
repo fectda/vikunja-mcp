@@ -81,13 +81,14 @@ interface ProjectTreeNode extends Project {
 export async function getProjectChildren(
   args: GetChildrenArgs,
   _context: unknown,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { id, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Verify the project exists
     await client.projects.getProject(id);
@@ -130,7 +131,11 @@ export async function getProjectChildren(
 /**
  * Builds a complete project tree
  */
-export async function getProjectTree(args: GetTreeArgs, _context: unknown): Promise<McpResponse> {
+export async function getProjectTree(
+  args: GetTreeArgs,
+  _context: unknown,
+  sessionId?: string,
+): Promise<McpResponse> {
   const {
     id,
     maxDepth = 10,
@@ -146,7 +151,7 @@ export async function getProjectTree(args: GetTreeArgs, _context: unknown): Prom
   }
 
   try {
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get all projects
     const allProjects = await client.projects.getProjects({ per_page: 1000 });
@@ -227,13 +232,14 @@ export async function getProjectTree(args: GetTreeArgs, _context: unknown): Prom
 export async function getProjectBreadcrumb(
   args: GetBreadcrumbArgs,
   _context: unknown,
+  sessionId?: string,
 ): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get all projects for navigation
     const allProjects = await client.projects.getProjects({ per_page: 1000 });
@@ -281,13 +287,17 @@ export async function getProjectBreadcrumb(
 /**
  * Moves a project to a new parent
  */
-export async function moveProject(args: MoveProjectArgs, _context: unknown): Promise<McpResponse> {
+export async function moveProject(
+  args: MoveProjectArgs,
+  _context: unknown,
+  sessionId?: string,
+): Promise<McpResponse> {
   const { id, parentProjectId, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Get current project
     const currentProject = await client.projects.getProject(id);

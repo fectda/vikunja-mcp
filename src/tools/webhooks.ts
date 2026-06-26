@@ -33,7 +33,7 @@ export function expireWebhookEventCache(): void {
 // Use shared validateAndConvertId from utils/validation
 
 // Get valid webhook events with caching
-async function getValidEvents(authManager: AuthManager): Promise<string[]> {
+async function getValidEvents(authManager: AuthManager, sessionId?: string): Promise<string[]> {
   const now = new Date();
 
   // Return cached events if still valid
@@ -48,7 +48,7 @@ async function getValidEvents(authManager: AuthManager): Promise<string[]> {
   // Fetch fresh events
   logger.debug('Fetching fresh webhook events from API');
   try {
-    const session = authManager.getSession();
+    const session = authManager.getSession(sessionId);
     const response = await fetch(`${session.apiUrl}/webhooks/events`, {
       method: 'GET',
       headers: {
@@ -116,8 +116,12 @@ async function getValidEvents(authManager: AuthManager): Promise<string[]> {
 }
 
 // Validate webhook events against allowed list
-async function validateWebhookEvents(authManager: AuthManager, events: string[]): Promise<void> {
-  const validEvents = await getValidEvents(authManager);
+async function validateWebhookEvents(
+  authManager: AuthManager,
+  events: string[],
+  sessionId?: string,
+): Promise<void> {
+  const validEvents = await getValidEvents(authManager, sessionId);
   const invalidEvents = events.filter((event) => !validEvents.includes(event));
 
   if (invalidEvents.length > 0) {
@@ -149,17 +153,18 @@ export function registerWebhooksTool(
       events: z.array(z.string()).optional(),
       secret: z.string().optional(),
     },
-    async (args) => {
-      if (!authManager.isAuthenticated()) {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
+      if (!authManager.isAuthenticated(sessionId)) {
         throw new MCPError(
           ErrorCode.AUTH_REQUIRED,
           'Authentication required. Please use vikunja_auth.connect first.',
         );
       }
 
-      await getClientFromContext(); // Ensure client is initialized
+      await getClientFromContext(sessionId); // Ensure client is initialized
       const subcommand = args.subcommand;
-      const session = authManager.getSession();
+      const session = authManager.getSession(sessionId);
       const baseUrl = session.apiUrl;
       const headers = {
         Authorization: `Bearer ${session.apiToken}`,
@@ -302,7 +307,7 @@ export function registerWebhooksTool(
             }
 
             // Validate events against allowed list
-            await validateWebhookEvents(authManager, args.events);
+            await validateWebhookEvents(authManager, args.events, sessionId);
 
             const webhookData: Partial<Webhook> = {
               target_url: args.targetUrl,
@@ -375,7 +380,7 @@ export function registerWebhooksTool(
             }
 
             // Validate events against allowed list
-            await validateWebhookEvents(authManager, args.events);
+            await validateWebhookEvents(authManager, args.events, sessionId);
 
             // The API only allows updating events
             const updateData = {
@@ -485,7 +490,7 @@ export function registerWebhooksTool(
           }
 
           case 'list-events': {
-            const events = await getValidEvents(authManager);
+            const events = await getValidEvents(authManager, sessionId);
 
             logger.info('Listed available webhook events', { count: events.length });
 

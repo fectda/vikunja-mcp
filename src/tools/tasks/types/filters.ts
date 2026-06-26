@@ -4,11 +4,7 @@
  */
 
 import type { Task } from 'node-vikunja';
-import type {
-  FilterExpression,
-  SavedFilter,
-  FilterValidationConfig
-} from '../../../types/filters';
+import type { FilterExpression, SavedFilter, FilterValidationConfig } from '../../../types/filters';
 import type { GetTasksParams } from 'node-vikunja';
 import type { AorpBuilderConfig } from '../../../types';
 import type { SimpleFilterStorage } from '../../../storage';
@@ -36,6 +32,8 @@ export interface FilteringParams {
   filterExpression: FilterExpression | null;
   filterString: string | undefined;
   params: GetTasksParams;
+  /** Session ID for multi-session isolation */
+  sessionId?: string;
 }
 
 /**

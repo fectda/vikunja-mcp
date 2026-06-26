@@ -135,8 +135,9 @@ export function registerExportTool(
       projectId: z.number().int().positive(),
       includeChildren: z.boolean().optional().default(false),
     },
-    async (args) => {
-      if (!authManager.isAuthenticated()) {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
+      if (!authManager.isAuthenticated(sessionId)) {
         throw new MCPError(
           ErrorCode.AUTH_REQUIRED,
           'Authentication required. Please use vikunja_auth.connect first.',
@@ -144,7 +145,7 @@ export function registerExportTool(
       }
 
       // Export operations require JWT authentication
-      if (authManager.getAuthType() !== 'jwt') {
+      if (authManager.getAuthType(sessionId) !== 'jwt') {
         throw new MCPError(
           ErrorCode.PERMISSION_DENIED,
           'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
@@ -156,7 +157,7 @@ export function registerExportTool(
 
         validateSharedId(projectId, 'projectId');
 
-        const client = await getClientFromContext();
+        const client = await getClientFromContext(sessionId);
 
         // Export the project data
         const exportData = await exportProjectRecursive(client, projectId, includeChildren);
@@ -209,9 +210,10 @@ export function registerExportTool(
         .optional()
         .describe('Vikunja password. Falls back to VIKUNJA_EXPORT_PASSWORD env var.'),
     },
-    async (args) => {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
       // Export operations require JWT authentication
-      if (authManager.getAuthType() !== 'jwt') {
+      if (authManager.getAuthType(sessionId) !== 'jwt') {
         throw new MCPError(
           ErrorCode.PERMISSION_DENIED,
           'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
@@ -227,10 +229,10 @@ export function registerExportTool(
           );
         }
 
-        await getClientFromContext();
+        await getClientFromContext(sessionId);
 
         // The node-vikunja client might not have this endpoint, so we'll make a direct API call
-        const session = authManager.getSession();
+        const session = authManager.getSession(sessionId);
         const baseUrl = session.apiUrl;
         const token = session.apiToken;
 
@@ -299,9 +301,10 @@ export function registerExportTool(
         .optional()
         .describe('Vikunja password. Falls back to VIKUNJA_EXPORT_PASSWORD env var.'),
     },
-    async (args) => {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
       // Export operations require JWT authentication
-      if (authManager.getAuthType() !== 'jwt') {
+      if (authManager.getAuthType(sessionId) !== 'jwt') {
         throw new MCPError(
           ErrorCode.PERMISSION_DENIED,
           'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
@@ -317,10 +320,10 @@ export function registerExportTool(
           );
         }
 
-        await getClientFromContext();
+        await getClientFromContext(sessionId);
 
         // The node-vikunja client might not have this endpoint, so we'll make a direct API call
-        const session = authManager.getSession();
+        const session = authManager.getSession(sessionId);
         const baseUrl = session.apiUrl;
         const token = session.apiToken;
 

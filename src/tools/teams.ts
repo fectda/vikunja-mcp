@@ -51,15 +51,16 @@ export function registerTeamsTool(
       username: z.string().optional(),
       admin: z.boolean().optional(),
     },
-    async (args) => {
-      if (!authManager.isAuthenticated()) {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
+      if (!authManager.isAuthenticated(sessionId)) {
         throw new MCPError(
           ErrorCode.AUTH_REQUIRED,
           'Authentication required. Please use vikunja_auth.connect first.',
         );
       }
 
-      const client = (await getClientFromContext()) as TypedVikunjaClient;
+      const client = (await getClientFromContext(sessionId)) as TypedVikunjaClient;
       const subcommand = args.subcommand;
 
       try {
@@ -126,7 +127,7 @@ export function registerTeamsTool(
             }
 
             const teamId = validateAndConvertId(args.id, 'id');
-            const session = authManager.getSession();
+            const session = authManager.getSession(sessionId);
 
             // Make direct API call to get team
             const response = await fetch(`${session.apiUrl}/teams/${teamId}`, {
@@ -180,7 +181,7 @@ export function registerTeamsTool(
               );
             }
 
-            const session = authManager.getSession();
+            const session = authManager.getSession(sessionId);
             const updateData: Partial<Team> = {};
             if (args.name !== undefined) updateData.name = args.name;
             if (args.description !== undefined) updateData.description = args.description;
@@ -234,7 +235,7 @@ export function registerTeamsTool(
             // Check if deleteTeam method exists and is a function
             if (!client.teams.deleteTeam || typeof client.teams.deleteTeam !== 'function') {
               // Fallback: Make direct API call if method doesn't exist
-              const session = authManager.getSession();
+              const session = authManager.getSession(sessionId);
               const response = await fetch(`${session.apiUrl}/teams/${teamId}`, {
                 method: 'DELETE',
                 headers: {
@@ -298,7 +299,7 @@ export function registerTeamsTool(
             }
 
             const teamId = validateAndConvertId(args.id, 'id');
-            const session = authManager.getSession();
+            const session = authManager.getSession(sessionId);
             const memberSubcommand = args.memberSubcommand || 'list';
 
             switch (memberSubcommand) {

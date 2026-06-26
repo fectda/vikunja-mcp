@@ -4,9 +4,7 @@
 
 import type { VikunjaClient } from 'node-vikunja';
 import type { AuthManager } from './auth/AuthManager';
-import type {
-  VikunjaModule
-} from './types/node-vikunja-extended';
+import type { VikunjaModule } from './types/node-vikunja-extended';
 import { isVikunjaClientConstructor } from './types/node-vikunja-extended';
 import { VikunjaClientFactory } from './client/VikunjaClientFactory';
 import { Mutex } from 'async-mutex';
@@ -69,11 +67,11 @@ class ClientContext {
   /**
    * Get a client instance using the factory (thread-safe)
    */
-  async getClient(): Promise<VikunjaClient> {
+  async getClient(sessionId?: string): Promise<VikunjaClient> {
     const release = await this.factoryMutex.acquire();
     try {
       if (this.clientFactory) {
-        return this.clientFactory.getClient();
+        return this.clientFactory.getClient(sessionId);
       }
       throw createAuthRequiredError('get Vikunja client');
     } finally {
@@ -97,9 +95,9 @@ class ClientContext {
 /**
  * Convenience function to get client from context (thread-safe)
  */
-export async function getClientFromContext(): Promise<VikunjaClient> {
+export async function getClientFromContext(sessionId?: string): Promise<VikunjaClient> {
   const context = await ClientContext.getInstanceAsync();
-  return context.getClient();
+  return context.getClient(sessionId);
 }
 
 /**
@@ -123,13 +121,16 @@ export { ClientContext };
 /**
  * Creates a new VikunjaClientFactory with dependency injection
  */
-export async function createVikunjaClientFactory(authManager: AuthManager): Promise<VikunjaClientFactory> {
+export async function createVikunjaClientFactory(
+  authManager: AuthManager,
+): Promise<VikunjaClientFactory> {
   // Dynamically import VikunjaClient
   const module: VikunjaModule = await import('node-vikunja');
   if (!isVikunjaClientConstructor(module.VikunjaClient)) {
-    throw createInternalError('Invalid VikunjaClient constructor imported from node-vikunja module');
+    throw createInternalError(
+      'Invalid VikunjaClient constructor imported from node-vikunja module',
+    );
   }
-  
+
   return new VikunjaClientFactory(authManager, module.VikunjaClient);
 }
-

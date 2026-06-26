@@ -65,7 +65,7 @@ export async function updateTask(
       validateDateString(args.dueDate, 'dueDate');
     }
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(args.sessionId);
 
     // Analyze current state and track changes
     const updateState = await analyzeUpdateState(client, args.id, args);

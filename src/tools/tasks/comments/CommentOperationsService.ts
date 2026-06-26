@@ -13,8 +13,12 @@ export const CommentOperationsService = {
   /**
    * Create a new comment on a task
    */
-  async createComment(taskId: number, commentText: string): Promise<TaskComment> {
-    const client = await getClientFromContext();
+  async createComment(
+    taskId: number,
+    commentText: string,
+    sessionId?: string,
+  ): Promise<TaskComment> {
+    const client = await getClientFromContext(sessionId);
     return await client.tasks.createTaskComment(taskId, {
       task_id: taskId,
       comment: commentText,
@@ -24,8 +28,8 @@ export const CommentOperationsService = {
   /**
    * Fetch all comments for a task
    */
-  async fetchTaskComments(taskId: number): Promise<TaskComment[]> {
-    const client = await getClientFromContext();
+  async fetchTaskComments(taskId: number, sessionId?: string): Promise<TaskComment[]> {
+    const client = await getClientFromContext(sessionId);
     return await client.tasks.getTaskComments(taskId);
   },
 

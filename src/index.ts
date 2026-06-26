@@ -123,7 +123,7 @@ void autoLoginWithCredentials().then((jwtToken) => {
   const tokenPrefix = token.substring(0, 10) + '...';
   const connectionMessage = createSecureConnectionMessage(process.env.VIKUNJA_URL, token);
   logger.info('Auto-authenticating %s: %s', authType, connectionMessage);
-  authManager.connect(process.env.VIKUNJA_URL, token);
+  authManager.connect(process.env.VIKUNJA_URL, token, 'default');
 
   const detectedAuthType = authManager.getAuthType();
   logger.info(

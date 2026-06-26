@@ -11,16 +11,19 @@ import { commentResponseFormatter } from './CommentResponseFormatter';
 /**
  * Add a comment to a task or list task comments
  */
-export async function handleComment(args: {
-  id?: number;
-  comment?: string;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function handleComment(
+  args: {
+    id?: number;
+    comment?: string;
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     const { taskId, commentText } = commentValidationService.validateCommentInput(args);
 
     // If no comment text provided, list comments
     if (!commentValidationService.shouldCreateComment(commentText)) {
-      const comments = await CommentOperationsService.fetchTaskComments(taskId);
+      const comments = await CommentOperationsService.fetchTaskComments(taskId, sessionId);
 
       // Format and return response
       const response = commentResponseFormatter.formatListCommentsResponse(comments);
@@ -29,14 +32,16 @@ export async function handleComment(args: {
 
     // Create a new comment
     if (!commentText) {
-      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Comment text is required for comment creation');
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'Comment text is required for comment creation',
+      );
     }
-    const newComment = await CommentOperationsService.createComment(taskId, commentText);
+    const newComment = await CommentOperationsService.createComment(taskId, commentText, sessionId);
 
     // Format and return response
     const response = commentResponseFormatter.formatCreateCommentResponse(newComment);
     return commentResponseFormatter.formatMcpResponse(response);
-
   } catch (error) {
     throw new MCPError(
       ErrorCode.API_ERROR,
@@ -59,18 +64,20 @@ export function removeComment(): Promise<{ content: Array<{ type: 'text'; text: 
 /**
  * List all comments for a task
  */
-export async function listComments(args: {
-  id?: number;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function listComments(
+  args: {
+    id?: number;
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     const { taskId } = commentValidationService.validateListInput(args);
 
-    const comments = await CommentOperationsService.fetchTaskComments(taskId);
+    const comments = await CommentOperationsService.fetchTaskComments(taskId, sessionId);
 
     // Format and return response
     const response = commentResponseFormatter.formatListCommentsResponse(comments);
     return commentResponseFormatter.formatMcpResponse(response);
-
   } catch (error) {
     throw new MCPError(
       ErrorCode.API_ERROR,

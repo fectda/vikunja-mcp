@@ -13,10 +13,13 @@ import { createSimpleResponse, formatAorpAsMarkdown } from '../../utils/response
 /**
  * Add labels to a task
  */
-export async function applyLabels(args: {
-  id?: number;
-  labels?: number[];
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function applyLabels(
+  args: {
+    id?: number;
+    labels?: number[];
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
       throw new MCPError(
@@ -33,7 +36,7 @@ export async function applyLabels(args: {
     // Validate label IDs
     args.labels.forEach((id) => validateId(id, 'label ID'));
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
     const taskId = args.id;
     const labelIds = args.labels;
 
@@ -70,7 +73,7 @@ export async function applyLabels(args: {
       'apply-label',
       `Label${labelIds.length > 1 ? 's' : ''} applied to task successfully`,
       { task },
-      { metadata: { affectedFields: ['labels'] } }
+      { metadata: { affectedFields: ['labels'] } },
     );
 
     return {
@@ -92,10 +95,13 @@ export async function applyLabels(args: {
 /**
  * Remove labels from a task
  */
-export async function removeLabels(args: {
-  id?: number;
-  labels?: number[];
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function removeLabels(
+  args: {
+    id?: number;
+    labels?: number[];
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
       throw new MCPError(
@@ -112,7 +118,7 @@ export async function removeLabels(args: {
     // Validate label IDs
     args.labels.forEach((id) => validateId(id, 'label ID'));
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
     const taskId = args.id;
     const labelIds = args.labels;
 
@@ -142,7 +148,7 @@ export async function removeLabels(args: {
       'remove-label',
       `Label${labelIds.length > 1 ? 's' : ''} removed from task successfully`,
       { task },
-      { metadata: { affectedFields: ['labels'] } }
+      { metadata: { affectedFields: ['labels'] } },
     );
 
     return {
@@ -164,9 +170,12 @@ export async function removeLabels(args: {
 /**
  * List labels of a task
  */
-export async function listTaskLabels(args: {
-  id?: number;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+export async function listTaskLabels(
+  args: {
+    id?: number;
+  },
+  sessionId?: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (args.id === undefined) {
       throw new MCPError(
@@ -176,7 +185,7 @@ export async function listTaskLabels(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getClientFromContext();
+    const client = await getClientFromContext(sessionId);
 
     // Fetch the task to get current labels
     const task = await client.tasks.getTask(args.id);
@@ -192,7 +201,7 @@ export async function listTaskLabels(args: {
       'list-labels',
       `Task has ${labels.length} label(s)`,
       { task: { ...minimalTask, labels: labels } },
-      { metadata: { count: labels.length } }
+      { metadata: { count: labels.length } },
     );
 
     return {

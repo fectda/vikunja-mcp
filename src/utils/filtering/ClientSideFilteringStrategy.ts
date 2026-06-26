@@ -1,6 +1,6 @@
 /**
  * Client-side filtering strategy
- * 
+ *
  * This strategy loads all tasks from the API and then applies filtering
  * logic on the client side. This is the traditional approach that works
  * with all versions of Vikunja but may be less efficient for large datasets.
@@ -15,15 +15,15 @@ import { logger } from '../logger';
 
 export class ClientSideFilteringStrategy implements TaskFilteringStrategy {
   async execute(params: FilteringParams): Promise<FilteringResult> {
-    const { args, filterExpression, filterString, params: apiParams } = params;
-    
-    const client = await getClientFromContext();
-    
+    const { args, filterExpression, filterString, params: apiParams, sessionId } = params;
+
+    const client = await getClientFromContext(sessionId);
+
     logger.info('Using client-side filtering', {
       filter: filterString,
-      endpoint: args.projectId && !args.allProjects ? 'getProjectTasks' : 'getAllTasks'
+      endpoint: args.projectId && !args.allProjects ? 'getProjectTasks' : 'getAllTasks',
     });
-    
+
     // Load tasks without server-side filtering
     let tasks;
     if (args.projectId !== undefined && !args.allProjects) {
@@ -32,19 +32,19 @@ export class ClientSideFilteringStrategy implements TaskFilteringStrategy {
       // Get tasks for specific project without filter
       tasks = await client.tasks.getProjectTasks(args.projectId, apiParams);
     } else {
-      // Get all tasks across all projects without filter  
+      // Get all tasks across all projects without filter
       tasks = await client.tasks.getAllTasks(apiParams);
     }
-    
+
     logger.info('Tasks loaded for client-side filtering', {
       totalTasksLoaded: tasks?.length || 0,
-      filter: filterString
+      filter: filterString,
     });
-    
+
     // Apply client-side filtering if we have a filter expression
     const safeTasks = tasks || [];
     let filteredTasks = safeTasks;
-    
+
     if (filterExpression) {
       const originalCount = safeTasks.length;
       filteredTasks = applyFilter(safeTasks, filterExpression);
@@ -54,15 +54,15 @@ export class ClientSideFilteringStrategy implements TaskFilteringStrategy {
         filter: filterString,
       });
     }
-    
+
     return {
       tasks: filteredTasks || [],
       metadata: {
         serverSideFilteringUsed: false,
         serverSideFilteringAttempted: false,
         clientSideFiltering: Boolean(filterExpression),
-        filteringNote: 'Client-side filtering applied (server-side disabled in development)'
-      }
+        filteringNote: 'Client-side filtering applied (server-side disabled in development)',
+      },
     };
   }
 }

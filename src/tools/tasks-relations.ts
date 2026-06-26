@@ -62,8 +62,9 @@ interface RelationArgs {
 
 export async function handleRelationSubcommands(
   args: RelationArgs,
+  sessionId?: string,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const client = await getClientFromContext();
+  const client = await getClientFromContext(sessionId);
 
   switch (args.subcommand) {
     case 'relate': {
@@ -122,7 +123,7 @@ export async function handleRelationSubcommands(
           response.operation || 'unknown',
           response.message || 'Operation completed',
           response,
-          response.metadata as Record<string, unknown>
+          response.metadata as Record<string, unknown>,
         );
 
         return {
@@ -134,7 +135,12 @@ export async function handleRelationSubcommands(
           ],
         };
       } catch (error) {
-        throw wrapToolError(error, 'vikunja_tasks_relations', 'create task relation', `${args.id}-${args.otherTaskId}`);
+        throw wrapToolError(
+          error,
+          'vikunja_tasks_relations',
+          'create task relation',
+          `${args.id}-${args.otherTaskId}`,
+        );
       }
     }
 
@@ -194,7 +200,7 @@ export async function handleRelationSubcommands(
           response.operation || 'unknown',
           response.message || 'Operation completed',
           response,
-          response.metadata as Record<string, unknown>
+          response.metadata as Record<string, unknown>,
         );
 
         return {
@@ -206,7 +212,12 @@ export async function handleRelationSubcommands(
           ],
         };
       } catch (error) {
-        throw wrapToolError(error, 'vikunja_tasks_relations', 'remove task relation', `${args.id}-${args.otherTaskId}`);
+        throw wrapToolError(
+          error,
+          'vikunja_tasks_relations',
+          'remove task relation',
+          `${args.id}-${args.otherTaskId}`,
+        );
       }
     }
 
@@ -241,7 +252,7 @@ export async function handleRelationSubcommands(
           response.operation || 'unknown',
           response.message || 'Operation completed',
           response,
-          response.metadata as Record<string, unknown>
+          response.metadata as Record<string, unknown>,
         );
 
         return {

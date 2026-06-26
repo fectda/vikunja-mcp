@@ -19,12 +19,13 @@ import { formatAorpAsMarkdown } from '../utils/response-factory';
  */
 async function getSessionStorage(
   authManager: AuthManager,
+  sessionId?: string,
 ): ReturnType<typeof storageManager.getStorage> {
-  const session = authManager.getSession();
-  const sessionId = session.apiToken
+  const session = authManager.getSession(sessionId);
+  const storageKey = session.apiToken
     ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}`
     : 'anonymous';
-  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+  return storageManager.getStorage(storageKey, session.userId, session.apiUrl);
 }
 
 interface TemplateData {
@@ -71,18 +72,19 @@ export function registerTemplatesTool(
       parentProjectId: z.number().optional(),
       variables: z.record(z.string()).optional(),
     },
-    async (args) => {
+    async (args, extra?: { sessionId?: string }) => {
+      const sessionId = extra?.sessionId;
       try {
         // Check authentication
-        if (!authManager.isAuthenticated()) {
+        if (!authManager.isAuthenticated(sessionId)) {
           throw new MCPError(
             ErrorCode.AUTH_REQUIRED,
             'Authentication required. Please use vikunja_auth.connect first.',
           );
         }
 
-        const client = await getClientFromContext();
-        const storage = await getSessionStorage(authManager);
+        const client = await getClientFromContext(sessionId);
+        const storage = await getSessionStorage(authManager, sessionId);
 
         switch (args.subcommand) {
           case 'create': {

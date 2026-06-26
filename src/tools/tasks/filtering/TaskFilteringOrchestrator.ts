@@ -27,7 +27,8 @@ export const TaskFilteringOrchestrator = {
   async executeTaskFiltering(
     args: TaskListingArgs,
     storage: SimpleFilterStorage,
-    config: FilterValidationConfig = {}
+    sessionId?: string,
+    config: FilterValidationConfig = {},
   ): Promise<TaskFilterExecutionResult> {
     try {
       logger.debug('Starting task filtering orchestration', {
@@ -35,7 +36,7 @@ export const TaskFilteringOrchestrator = {
         hasFilterId: !!args.filterId,
         projectId: args.projectId,
         page: args.page,
-        perPage: args.perPage
+        perPage: args.perPage,
       });
 
       // Step 1: Validate all inputs and parse filters
@@ -44,7 +45,7 @@ export const TaskFilteringOrchestrator = {
       // Log any validation warnings
       if (validationResult.validationWarnings.length > 0) {
         logger.warn('Task filtering validation warnings', {
-          warnings: validationResult.validationWarnings
+          warnings: validationResult.validationWarnings,
         });
       }
 
@@ -57,32 +58,32 @@ export const TaskFilteringOrchestrator = {
         validationResult.filterExpression,
         validationResult.filterString,
         params,
-        storage
+        storage,
+        sessionId,
       );
 
       // Step 4: Post-process and validate results
       const finalValidation = FilterValidator.validateLoadedTasks(filteringResult.tasks.length);
       if (finalValidation.warnings.length > 0) {
         logger.warn('Task filtering result warnings', {
-          warnings: finalValidation.warnings
+          warnings: finalValidation.warnings,
         });
       }
 
       if (finalValidation.shouldThrow) {
         throw new MCPError(
           ErrorCode.INTERNAL_ERROR,
-          `Task filtering result validation failed: ${finalValidation.warnings.join(', ')}`
+          `Task filtering result validation failed: ${finalValidation.warnings.join(', ')}`,
         );
       }
 
       logger.debug('Task filtering orchestration completed', {
         taskCount: filteringResult.tasks.length,
         serverSideFilteringUsed: filteringResult.metadata.serverSideFilteringUsed,
-        clientSideFiltering: filteringResult.metadata.clientSideFiltering
+        clientSideFiltering: filteringResult.metadata.clientSideFiltering,
       });
 
       return filteringResult;
-
     } catch (error) {
       if (error instanceof MCPError) {
         throw error;
@@ -93,8 +94,8 @@ export const TaskFilteringOrchestrator = {
         args: {
           hasFilter: !!args.filter,
           hasFilterId: !!args.filterId,
-          projectId: args.projectId
-        }
+          projectId: args.projectId,
+        },
       });
 
       // Re-throw original error to be handled by main function
@@ -109,7 +110,7 @@ export const TaskFilteringOrchestrator = {
   async validateTaskFiltering(
     args: TaskListingArgs,
     storage: SimpleFilterStorage,
-    config: FilterValidationConfig = {}
+    config: FilterValidationConfig = {},
   ): Promise<{
     isValid: boolean;
     warnings: string[];
@@ -127,16 +128,15 @@ export const TaskFilteringOrchestrator = {
         isValid: true,
         warnings: validationResult.validationWarnings,
         errors: [],
-        memoryValidation: validationResult.memoryValidation
+        memoryValidation: validationResult.memoryValidation,
       };
-
     } catch (error) {
       if (error instanceof MCPError) {
         return {
           isValid: false,
           warnings: [],
           errors: [error.message],
-          memoryValidation: { isValid: false, warnings: [] }
+          memoryValidation: { isValid: false, warnings: [] },
         };
       }
 
@@ -144,7 +144,7 @@ export const TaskFilteringOrchestrator = {
         isValid: false,
         warnings: [],
         errors: [`Validation failed: ${error instanceof Error ? error.message : String(error)}`],
-        memoryValidation: { isValid: false, warnings: [] }
+        memoryValidation: { isValid: false, warnings: [] },
       };
     }
   },
@@ -154,7 +154,7 @@ export const TaskFilteringOrchestrator = {
    */
   createFilteringContext(
     args: TaskListingArgs,
-    result: TaskFilterExecutionResult
+    result: TaskFilterExecutionResult,
   ): {
     input: {
       hasFilter: boolean;
@@ -228,23 +228,23 @@ export const TaskFilteringOrchestrator = {
         estimatedMemoryMB: number;
       };
     } = {
-        taskCount: result.tasks?.length || 0,
-        serverSideFilteringUsed: result.metadata?.serverSideFilteringUsed || false,
-        serverSideFilteringAttempted: result.metadata?.serverSideFilteringAttempted || false,
-        clientSideFiltering: result.metadata?.clientSideFiltering || false,
-        filteringNote: result.metadata?.filteringNote || '',
-      };
+      taskCount: result.tasks?.length || 0,
+      serverSideFilteringUsed: result.metadata?.serverSideFilteringUsed || false,
+      serverSideFilteringAttempted: result.metadata?.serverSideFilteringAttempted || false,
+      clientSideFiltering: result.metadata?.clientSideFiltering || false,
+      filteringNote: result.metadata?.filteringNote || '',
+    };
 
-      if (result.memoryInfo !== undefined) {
-        output.memoryInfo = result.memoryInfo;
-      }
+    if (result.memoryInfo !== undefined) {
+      output.memoryInfo = result.memoryInfo;
+    }
 
     return {
       input,
       output,
       performance: {
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     };
   },
 
@@ -253,7 +253,7 @@ export const TaskFilteringOrchestrator = {
    */
   analyzeFilteringPerformance(
     args: TaskListingArgs,
-    result: TaskFilterExecutionResult
+    result: TaskFilterExecutionResult,
   ): {
     isOptimal: boolean;
     recommendations: string[];
@@ -267,9 +267,13 @@ export const TaskFilteringOrchestrator = {
     if (args.filter && !result.metadata?.serverSideFilteringUsed) {
       if (result.metadata?.serverSideFilteringAttempted) {
         issues.push('Server-side filtering was attempted but failed, falling back to client-side');
-        recommendations.push('Consider simplifying the filter syntax for better server-side compatibility');
+        recommendations.push(
+          'Consider simplifying the filter syntax for better server-side compatibility',
+        );
       } else {
-        recommendations.push('Consider enabling server-side filtering for better performance with large datasets');
+        recommendations.push(
+          'Consider enabling server-side filtering for better performance with large datasets',
+        );
       }
       isOptimal = false;
     }
@@ -296,7 +300,7 @@ export const TaskFilteringOrchestrator = {
     return {
       isOptimal,
       recommendations,
-      issues
+      issues,
     };
   },
 };

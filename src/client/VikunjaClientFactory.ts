@@ -1,20 +1,25 @@
 /**
  * Vikunja Client Factory
  * Provides dependency injection for Vikunja client instances
+ * Supports per-session client caching keyed by sessionId (default: 'default')
  */
 
 import type { VikunjaClient } from 'node-vikunja';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientConstructor } from '../types/node-vikunja-extended';
 
+interface CachedClient {
+  client: VikunjaClient;
+  url: string | null;
+  token: string | null;
+}
+
 /**
  * Factory for creating and managing Vikunja client instances
  * Uses dependency injection instead of global state
  */
 export class VikunjaClientFactory {
-  private clientInstance: VikunjaClient | null = null;
-  private currentApiUrl: string | null = null;
-  private currentApiToken: string | null = null;
+  private clients: Map<string, CachedClient> = new Map();
 
   constructor(
     private readonly authManager: AuthManager,
@@ -22,35 +27,41 @@ export class VikunjaClientFactory {
   ) {}
 
   /**
+   * Resolve sessionId, defaulting to 'default'
+   */
+  private resolveCacheKey(sessionId?: string): string {
+    return sessionId || 'default';
+  }
+
+  /**
    * Get an authenticated Vikunja client instance
    */
-  getClient(): VikunjaClient {
-    const session = this.authManager.getSession();
+  getClient(sessionId?: string): VikunjaClient {
+    const cacheKey = this.resolveCacheKey(sessionId);
+    const session = this.authManager.getSession(sessionId);
 
     // Check if we need to create a new client
-    if (
-      !this.clientInstance ||
-      this.currentApiUrl !== session.apiUrl ||
-      this.currentApiToken !== session.apiToken
-    ) {
+    const cached = this.clients.get(cacheKey);
+    if (!cached || cached.url !== session.apiUrl || cached.token !== session.apiToken) {
       // Clean up old client if it exists
-      if (this.clientInstance) {
-        this.clientInstance = null;
-      }
+      this.clients.delete(cacheKey);
 
-      this.clientInstance = new this.VikunjaClientClass(session.apiUrl, session.apiToken);
-      this.currentApiUrl = session.apiUrl;
-      this.currentApiToken = session.apiToken;
+      const client = new this.VikunjaClientClass(session.apiUrl, session.apiToken);
+      this.clients.set(cacheKey, {
+        client,
+        url: session.apiUrl,
+        token: session.apiToken,
+      });
 
       // Monkey-patch getAllTasks to use /tasks instead of /tasks/all
       // This is a workaround for the deprecated /tasks/all endpoint in node-vikunja
-      if (this.clientInstance.tasks) {
-        type OriginalGetAllTasks = typeof this.clientInstance.tasks.getAllTasks;
-        this.clientInstance.tasks.getAllTasks = (async (
+      if (client.tasks) {
+        type OriginalGetAllTasks = typeof client.tasks.getAllTasks;
+        client.tasks.getAllTasks = (async (
           params?: Record<string, string | readonly string[]>,
         ): Promise<unknown> => {
-          const baseUrl = this.currentApiUrl || '';
-          const token = this.currentApiToken || '';
+          const baseUrl = session.apiUrl || '';
+          const token = session.apiToken || '';
           const url = new URL(`${baseUrl.replace(/\/+$/, '')}/tasks`);
 
           if (params) {
@@ -73,30 +84,35 @@ export class VikunjaClientFactory {
           return response.json();
         }) as OriginalGetAllTasks;
       }
+
+      const entry = this.clients.get(cacheKey);
+      if (!entry) {
+        throw new Error('Failed to create Vikunja client instance');
+      }
+
+      return entry.client;
     }
 
-    if (!this.clientInstance) {
-      throw new Error('Failed to create Vikunja client instance');
-    }
-
-    return this.clientInstance;
+    return cached.client;
   }
 
   /**
    * Cleanup function to reset client instance
    */
-  cleanup(): void {
-    this.clientInstance = null;
-    this.currentApiUrl = null;
-    this.currentApiToken = null;
+  cleanup(sessionId?: string): void {
+    if (sessionId !== undefined) {
+      this.clients.delete(this.resolveCacheKey(sessionId));
+    } else {
+      this.clients.clear();
+    }
   }
 
   /**
    * Check if the factory has a valid session
    */
-  hasValidSession(): boolean {
+  hasValidSession(sessionId?: string): boolean {
     try {
-      this.authManager.getSession();
+      this.authManager.getSession(sessionId);
       return true;
     } catch {
       return false;

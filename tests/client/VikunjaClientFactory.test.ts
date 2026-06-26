@@ -640,4 +640,109 @@ describe('VikunjaClientFactory', () => {
       (global.fetch as jest.Mock).mockRestore();
     });
   });
+
+  describe('Per-Session Client Caching', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      factory.cleanup();
+    });
+
+    it('should return the same client for the same sessionId', () => {
+      const session = {
+        apiUrl: 'https://test.vikunja.com',
+        apiToken: 'test-token-123',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      const client1 = factory.getClient('alice');
+      const client2 = factory.getClient('alice');
+
+      expect(client1).toBe(client2);
+      expect(mockVikunjaClientConstructor).toHaveBeenCalledTimes(1);
+      expect(mockAuthManager.getSession).toHaveBeenCalledWith('alice');
+    });
+
+    it('should return distinct clients for different sessionIds', () => {
+      const sessionAlice = {
+        apiUrl: 'https://alice.vikunja.com',
+        apiToken: 'alice-token',
+      };
+
+      const sessionBob = {
+        apiUrl: 'https://bob.vikunja.com',
+        apiToken: 'bob-token',
+      };
+
+      mockAuthManager.getSession.mockReturnValueOnce(sessionAlice).mockReturnValueOnce(sessionBob);
+
+      const clientA = factory.getClient('alice');
+      const clientB = factory.getClient('bob');
+
+      expect(clientA).not.toBe(clientB);
+      expect(mockVikunjaClientConstructor).toHaveBeenCalledTimes(2);
+      expect(mockAuthManager.getSession).toHaveBeenNthCalledWith(1, 'alice');
+      expect(mockAuthManager.getSession).toHaveBeenNthCalledWith(2, 'bob');
+    });
+
+    it('should use "default" sessionId when no sessionId provided', () => {
+      const session = {
+        apiUrl: 'https://default.vikunja.com',
+        apiToken: 'default-token',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      const client = factory.getClient();
+
+      expect(client).toBeDefined();
+      expect(mockAuthManager.getSession).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should isolate cleanup to the specified session only', () => {
+      const session = {
+        apiUrl: 'https://test.vikunja.com',
+        apiToken: 'test-token',
+      };
+
+      mockAuthManager.getSession.mockReturnValue(session);
+
+      const clientA = factory.getClient('alice');
+      const clientB = factory.getClient('bob');
+
+      factory.cleanup('alice');
+
+      // Alice's client should be recreated
+      const clientA2 = factory.getClient('alice');
+      expect(clientA2).not.toBe(clientA);
+
+      // Bob's client should still be cached
+      const clientB2 = factory.getClient('bob');
+      expect(clientB2).toBe(clientB);
+    });
+
+    it('should keep default session isolated from named sessions', () => {
+      const sessionDefault = {
+        apiUrl: 'https://default.vikunja.com',
+        apiToken: 'default-token',
+      };
+      const sessionAlice = {
+        apiUrl: 'https://alice.vikunja.com',
+        apiToken: 'alice-token',
+      };
+
+      mockAuthManager.getSession
+        .mockReturnValueOnce(sessionDefault)
+        .mockReturnValueOnce(sessionAlice)
+        .mockReturnValue(sessionDefault); // subsequent calls return default
+
+      const defaultClient = factory.getClient();
+      const aliceClient = factory.getClient('alice');
+      const defaultClient2 = factory.getClient();
+
+      expect(defaultClient).toBe(defaultClient2);
+      expect(aliceClient).not.toBe(defaultClient);
+      expect(mockVikunjaClientConstructor).toHaveBeenCalledTimes(2);
+    });
+  });
 });

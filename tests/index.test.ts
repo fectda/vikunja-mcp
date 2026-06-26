@@ -408,6 +408,7 @@ describe('Main Server Entry Point (index.ts)', () => {
       expect(mockAuthManager.connect).toHaveBeenCalledWith(
         'https://vikunja.example.com/api/v1',
         'tk_test123',
+        'default',
       );
 
       // Verify factory initialization
@@ -462,6 +463,7 @@ describe('Main Server Entry Point (index.ts)', () => {
       expect(mockAuthManager.connect).toHaveBeenCalledWith(
         'https://vikunja.example.com/api/v1',
         'tk_test123',
+        'default',
       );
 
       // Verify factory initialization failure

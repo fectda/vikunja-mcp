@@ -22,7 +22,8 @@ describe('AuthManager', () => {
     });
 
     it('should detect JWT token with eyJ prefix and 3 parts', () => {
-      const validJWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const validJWT =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
       expect(AuthManager.detectAuthType(validJWT)).toBe('jwt');
     });
 
@@ -63,9 +64,10 @@ describe('AuthManager', () => {
 
     it('should store session with JWT auth type', () => {
       const apiUrl = 'https://vikunja.example.com/api/v1';
-      const apiToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const apiToken =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
-      authManager.connect(apiUrl, apiToken, 'jwt');
+      authManager.connect(apiUrl, apiToken);
 
       const session = authManager.getSession();
       expect(session.apiUrl).toBe(apiUrl);
@@ -87,7 +89,8 @@ describe('AuthManager', () => {
 
     it('should auto-detect JWT token when no authType provided', () => {
       const apiUrl = 'https://vikunja.example.com/api/v1';
-      const apiToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const apiToken =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
       authManager.connect(apiUrl, apiToken);
 
@@ -100,7 +103,11 @@ describe('AuthManager', () => {
       const apiToken = 'tk_1234567890'; // API token format
 
       // Explicitly set to jwt even though token looks like API token
-      authManager.connect(apiUrl, apiToken, 'jwt');
+      authManager.saveSession({
+        apiUrl,
+        apiToken,
+        authType: 'jwt',
+      });
 
       const session = authManager.getSession();
       expect(session.authType).toBe('jwt');
@@ -189,7 +196,11 @@ describe('AuthManager', () => {
 
     it('should return authenticated status with authType', () => {
       const apiUrl = 'https://vikunja.example.com/api/v1';
-      authManager.connect(apiUrl, 'test-token', 'jwt');
+      authManager.saveSession({
+        apiUrl,
+        apiToken: 'jwt-token',
+        authType: 'jwt',
+      });
 
       const status = authManager.getStatus();
       expect(status.authenticated).toBe(true);
@@ -219,7 +230,11 @@ describe('AuthManager', () => {
     });
 
     it('should return jwt auth type', () => {
-      authManager.connect('https://vikunja.example.com/api/v1', 'jwt-token', 'jwt');
+      authManager.saveSession({
+        apiUrl: 'https://vikunja.example.com/api/v1',
+        apiToken: 'jwt-token',
+        authType: 'jwt',
+      });
       expect(authManager.getAuthType()).toBe('jwt');
     });
   });
@@ -261,14 +276,14 @@ describe('AuthManager', () => {
       it('should set userId in authenticated session', () => {
         testableAuthManager.setTestUserId('user-123');
         expect(testableAuthManager.getTestUserId()).toBe('user-123');
-        
+
         const status = testableAuthManager.getStatus();
         expect(status.userId).toBe('user-123');
       });
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
         const unauthenticatedManager = createTestableAuthManager();
-        
+
         expect(() => unauthenticatedManager.setTestUserId('user-123')).toThrow(MCPError);
         expect(() => unauthenticatedManager.setTestUserId('user-123')).toThrow(
           'Authentication required. Please use vikunja_auth.connect first.',
@@ -285,7 +300,7 @@ describe('AuthManager', () => {
       it('should update existing userId', () => {
         testableAuthManager.setTestUserId('user-123');
         expect(testableAuthManager.getTestUserId()).toBe('user-123');
-        
+
         testableAuthManager.setTestUserId('user-456');
         expect(testableAuthManager.getTestUserId()).toBe('user-456');
       });
@@ -301,7 +316,7 @@ describe('AuthManager', () => {
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
         const unauthenticatedManager = createTestableAuthManager();
         const expiry = new Date('2024-12-31T23:59:59Z');
-        
+
         expect(() => unauthenticatedManager.setTestTokenExpiry(expiry)).toThrow(MCPError);
         expect(() => unauthenticatedManager.setTestTokenExpiry(expiry)).toThrow(
           'Authentication required. Please use vikunja_auth.connect first.',
@@ -318,10 +333,10 @@ describe('AuthManager', () => {
       it('should update existing token expiry', () => {
         const expiry1 = new Date('2024-12-31T23:59:59Z');
         const expiry2 = new Date('2025-06-30T12:00:00Z');
-        
+
         testableAuthManager.setTestTokenExpiry(expiry1);
         expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry1);
-        
+
         testableAuthManager.setTestTokenExpiry(expiry2);
         expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry2);
       });
@@ -339,7 +354,7 @@ describe('AuthManager', () => {
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
         const unauthenticatedManager = createTestableAuthManager();
-        
+
         expect(() => unauthenticatedManager.getTestUserId()).toThrow(MCPError);
         expect(() => unauthenticatedManager.getTestUserId()).toThrow(
           'Authentication required. Please use vikunja_auth.connect first.',
@@ -367,7 +382,7 @@ describe('AuthManager', () => {
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
         const unauthenticatedManager = createTestableAuthManager();
-        
+
         expect(() => unauthenticatedManager.getTestTokenExpiry()).toThrow(MCPError);
         expect(() => unauthenticatedManager.getTestTokenExpiry()).toThrow(
           'Authentication required. Please use vikunja_auth.connect first.',
@@ -408,7 +423,7 @@ describe('AuthManager', () => {
         testableAuthManager.setTestUserId('user-123');
         const expiry = new Date('2024-12-31T23:59:59Z');
         testableAuthManager.setTestTokenExpiry(expiry);
-        
+
         // Update with undefined values (should not change existing values)
         testableAuthManager.updateSessionProperty({});
         expect(testableAuthManager.getTestUserId()).toBe('user-123');
@@ -417,8 +432,10 @@ describe('AuthManager', () => {
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
         const unauthenticatedManager = createTestableAuthManager();
-        
-        expect(() => unauthenticatedManager.updateSessionProperty({ userId: 'user-123' })).toThrow(MCPError);
+
+        expect(() => unauthenticatedManager.updateSessionProperty({ userId: 'user-123' })).toThrow(
+          MCPError,
+        );
         expect(() => unauthenticatedManager.updateSessionProperty({ userId: 'user-123' })).toThrow(
           'Authentication required. Please use vikunja_auth.connect first.',
         );
@@ -435,7 +452,7 @@ describe('AuthManager', () => {
         // The updateSessionProperty method is typed to only accept userId and tokenExpiry
         // But for testing security, we can try to bypass TypeScript with an invalid object
         const invalidUpdates = { apiUrl: 'new-url', apiToken: 'new-token' } as any;
-        
+
         expect(() => testableAuthManager.updateSessionProperty(invalidUpdates)).toThrow(MCPError);
         expect(() => testableAuthManager.updateSessionProperty(invalidUpdates)).toThrow(
           'Invalid session properties: apiUrl, apiToken. Only userId and tokenExpiry are allowed.',
@@ -448,6 +465,115 @@ describe('AuthManager', () => {
           expect((error as MCPError).code).toBe(ErrorCode.VALIDATION_ERROR);
         }
       });
+    });
+  });
+
+  describe('Multi-Session Support', () => {
+    it('should store and retrieve independent sessions keyed by sessionId', () => {
+      const urlA = 'https://alice.vikunja.com';
+      const urlB = 'https://bob.vikunja.com';
+
+      authManager.connect(urlA, 'alice-token', 'alice');
+      authManager.connect(urlB, 'bob-token', 'bob');
+
+      const aliceSession = authManager.getSession('alice');
+      const bobSession = authManager.getSession('bob');
+
+      expect(aliceSession.apiUrl).toBe(urlA);
+      expect(aliceSession.apiToken).toBe('alice-token');
+      expect(bobSession.apiUrl).toBe(urlB);
+      expect(bobSession.apiToken).toBe('bob-token');
+    });
+
+    it('should isolate disconnect to the specified session only', () => {
+      authManager.connect('https://alice.vikunja.com', 'alice-token', 'alice');
+      authManager.connect('https://bob.vikunja.com', 'bob-token', 'bob');
+
+      expect(authManager.isAuthenticated('alice')).toBe(true);
+      expect(authManager.isAuthenticated('bob')).toBe(true);
+
+      authManager.disconnect('alice');
+
+      expect(authManager.isAuthenticated('alice')).toBe(false);
+      expect(authManager.isAuthenticated('bob')).toBe(true);
+      expect(() => authManager.getSession('alice')).toThrow(MCPError);
+      expect(() => authManager.getSession('bob')).not.toThrow();
+    });
+
+    it('should use "default" as fallback when no sessionId provided', () => {
+      const defaultUrl = 'https://default.vikunja.com';
+
+      authManager.connect(defaultUrl, 'default-token');
+
+      const session = authManager.getSession();
+      expect(session.apiUrl).toBe(defaultUrl);
+      expect(session.apiToken).toBe('default-token');
+      expect(authManager.isAuthenticated()).toBe(true);
+    });
+
+    it('should return false for isAuthenticated with unknown sessionId', () => {
+      expect(authManager.isAuthenticated('nonexistent')).toBe(false);
+    });
+
+    it('should throw AUTH_REQUIRED for getSession with unknown sessionId', () => {
+      expect(() => authManager.getSession('nonexistent')).toThrow(MCPError);
+      expect(() => authManager.getSession('nonexistent')).toThrow(
+        'Authentication required. Please use vikunja_auth.connect first.',
+      );
+
+      try {
+        authManager.getSession('nonexistent');
+      } catch (error) {
+        expect(error).toBeInstanceOf(MCPError);
+        expect((error as MCPError).code).toBe(ErrorCode.AUTH_REQUIRED);
+      }
+    });
+
+    it('should isolate getStatus per session', () => {
+      authManager.connect('https://alice.vikunja.com', 'alice-token', 'alice');
+
+      const aliceStatus = authManager.getStatus('alice');
+      expect(aliceStatus.authenticated).toBe(true);
+      expect(aliceStatus.apiUrl).toBe('https://alice.vikunja.com');
+
+      const defaultStatus = authManager.getStatus();
+      expect(defaultStatus.authenticated).toBe(false);
+    });
+
+    it('should isolate getAuthType per session', () => {
+      const jwtToken = 'eyJhbGciOiJIUzI1NiJ9.test.test';
+      authManager.connect('https://test.vikunja.com', 'tk_some-token', 'api-only');
+      authManager.connect('https://jwt.vikunja.com', jwtToken, 'jwt-session');
+
+      expect(authManager.getAuthType('api-only')).toBe('api-token');
+      expect(authManager.getAuthType('jwt-session')).toBe('jwt');
+    });
+
+    it('should isolate saveSession per session', () => {
+      authManager.saveSession(
+        {
+          apiUrl: 'https://session-a.vikunja.com',
+          apiToken: 'token-a',
+          authType: 'api-token',
+        },
+        'session-a',
+      );
+
+      authManager.saveSession(
+        {
+          apiUrl: 'https://session-b.vikunja.com',
+          apiToken: 'token-b',
+          authType: 'jwt',
+        },
+        'session-b',
+      );
+
+      const sessionA = authManager.getSession('session-a');
+      const sessionB = authManager.getSession('session-b');
+
+      expect(sessionA.apiToken).toBe('token-a');
+      expect(sessionB.apiToken).toBe('token-b');
+      expect(sessionA.apiUrl).not.toBe(sessionB.apiUrl);
     });
   });
 });

@@ -12,7 +12,7 @@ import { withRateLimit } from './simplified-rate-limit';
 // Direct rate limiting application
 export function applyRateLimiting<T extends unknown[], R>(
   toolName: string,
-  handler: (...args: T) => Promise<R>
+  handler: (...args: T) => Promise<R>,
 ): (...args: T) => Promise<R> {
   return withRateLimit(toolName, handler);
 }
@@ -21,11 +21,16 @@ export function applyRateLimiting<T extends unknown[], R>(
 export function applyPermissions<T extends unknown[], R>(
   toolName: string,
   authManager: AuthManager,
-  handler: (...args: T) => Promise<R>
+  handler: (...args: T) => Promise<R>,
 ): (...args: T) => Promise<R> {
   return async (...args: T): Promise<R> => {
+    // Extract sessionId from the second argument (extra) passed by MCP SDK
+    const extra = args.length > 1 ? (args[1] as { sessionId?: string }) : undefined;
+    const sessionId = extra?.sessionId;
     // Get current session (null if not authenticated)
-    const session = authManager.isAuthenticated() ? authManager.getSession() : null;
+    const session = authManager.isAuthenticated(sessionId)
+      ? authManager.getSession(sessionId)
+      : null;
 
     // Check permissions
     const permissionResult = PermissionManager.checkToolPermission(session, toolName);
@@ -38,9 +43,7 @@ export function applyPermissions<T extends unknown[], R>(
       });
 
       // Use appropriate error code based on the issue
-      const errorCode = session
-        ? ErrorCode.PERMISSION_DENIED
-        : ErrorCode.AUTH_REQUIRED;
+      const errorCode = session ? ErrorCode.PERMISSION_DENIED : ErrorCode.AUTH_REQUIRED;
 
       throw new MCPError(errorCode, permissionResult.errorMessage || 'Permission denied');
     }
@@ -58,7 +61,7 @@ export function applyPermissions<T extends unknown[], R>(
 export function applyBothMiddleware<T extends unknown[], R>(
   toolName: string,
   authManager: AuthManager,
-  handler: (...args: T) => Promise<R>
+  handler: (...args: T) => Promise<R>,
 ): (...args: T) => Promise<R> {
   const withPermissions = applyPermissions(toolName, authManager, handler);
   return applyRateLimiting(toolName, withPermissions);
